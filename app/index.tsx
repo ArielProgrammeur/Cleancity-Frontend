@@ -21,5 +21,5 @@ export default function Home() {
 }
 
 const styles = {
-  container: 'flex flex-1 bg-white',
+  container: 'flex flex-1 bg-green-500',
 };
