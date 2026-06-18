@@ -1,23 +1,29 @@
-import { View } from 'react-native';
-
+import { View, Text, StyleSheet } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 
-import { Container } from '@/components/Container';
-import { ScreenContent } from '@/components/ScreenContent';
-
 export default function Details() {
-  const { name } = useLocalSearchParams();
+  const { name } = useLocalSearchParams<{ name?: string }>();
 
   return (
-    <View className={styles.container}>
+    <View style={styles.container}>
       <Stack.Screen options={{ title: 'Details' }} />
-      <Container>
-        <ScreenContent path="screens/details.tsx" title={`Showing details for user ${name}`} />
-      </Container>
+      <Text style={styles.title}>
+        {name ? `Showing details for user ${name}` : 'No user specified'}
+      </Text>
     </View>
   );
 }
 
-const styles = {
-  container: 'flex flex-1 bg-white',
-};
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+  },
+});

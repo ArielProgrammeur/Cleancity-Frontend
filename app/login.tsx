@@ -1,11 +1,11 @@
 import { Stack } from 'expo-router';
-import { SplashScreen } from '../src/presentation/features/splash';
+import { LoginScreen } from '../src/presentation/features/auth';
 
-export default function Index() {
+export default function Login() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SplashScreen />
+      <LoginScreen />
     </>
   );
 }
