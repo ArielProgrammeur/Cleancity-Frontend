@@ -8,6 +8,7 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -16,6 +17,7 @@ import { AuthInput } from '../components/AuthInput';
 export function SignUpScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -40,7 +42,7 @@ export function SignUpScreen() {
       >
         <View style={styles.header}>
           <View style={styles.logoCircle}>
-            <Ionicons name="leaf" size={40} color="white" />
+            <Image source={require('../../../../../assets/logo.png')} style={styles.logoImage} />
           </View>
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>
@@ -50,6 +52,7 @@ export function SignUpScreen() {
 
         <View style={styles.form}>
           <AuthInput
+            label="Full name"
             placeholder="Full name"
             value={name}
             onChangeText={setName}
@@ -58,6 +61,16 @@ export function SignUpScreen() {
           />
 
           <AuthInput
+            label="Phone number"
+            placeholder="Phone number"
+            value={phone}
+            onChangeText={setPhone}
+            icon="call-outline"
+            keyboardType="phone-pad"
+          />
+
+          <AuthInput
+            label="Email"
             placeholder="Email address"
             value={email}
             onChangeText={setEmail}
@@ -66,6 +79,7 @@ export function SignUpScreen() {
           />
 
           <AuthInput
+            label="Password"
             placeholder="Password"
             value={password}
             onChangeText={setPassword}
@@ -120,7 +134,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingTop: 80,
     paddingBottom: 40,
   },
   header: {
@@ -140,6 +154,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 8,
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    resizeMode: 'cover',
   },
   title: {
     fontSize: 28,

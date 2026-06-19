@@ -1,54 +1,76 @@
 import { useEffect, useRef } from 'react';
-import { View, Text, Animated, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Text, Animated, StyleSheet, Image } from 'react-native';
 import { router } from 'expo-router';
 
 export function SplashScreen() {
   const fadeLogo = useRef(new Animated.Value(0)).current;
   const scaleLogo = useRef(new Animated.Value(0.5)).current;
   const fadeTagline = useRef(new Animated.Value(0)).current;
+  const fadeScreen = useRef(new Animated.Value(1)).current;
+  const bgGreen = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.sequence([
       Animated.parallel([
         Animated.timing(fadeLogo, {
           toValue: 1,
-          duration: 800,
+          duration: 3000,
           useNativeDriver: true,
         }),
-        Animated.spring(scaleLogo, {
+        Animated.timing(scaleLogo, {
           toValue: 1,
-          friction: 4,
+          duration: 3000,
           useNativeDriver: true,
+        }),
+        Animated.timing(bgGreen, {
+          toValue: 1,
+          duration: 2500,
+          useNativeDriver: false,
         }),
       ]),
       Animated.timing(fadeTagline, {
         toValue: 1,
-        duration: 500,
+        duration: 1200,
         useNativeDriver: true,
       }),
     ]).start();
 
     const timer = setTimeout(() => {
-      router.replace('/onboarding');
-    }, 2500);
+      Animated.timing(fadeScreen, {
+        toValue: 0,
+        duration: 700,
+        useNativeDriver: true,
+      }).start(() => {
+        router.replace('/onboarding');
+      });
+    }, 5500);
 
     return () => clearTimeout(timer);
   }, []);
 
   return (
-    <View style={styles.container}>
+    <Animated.View
+      style={[
+        styles.container,
+        {
+          opacity: fadeScreen,
+          backgroundColor: bgGreen.interpolate({
+            inputRange: [0, 1],
+            outputRange: ['#FFFFFF', '#2E7D32'],
+          }),
+        },
+      ]}
+    >
       <Animated.View
         style={[styles.logoContainer, { opacity: fadeLogo, transform: [{ scale: scaleLogo }] }]}
       >
-        <Ionicons name="leaf" size={96} color="white" />
+        <Image source={require('../../../../../assets/logo.png')} style={styles.logo} />
         <Text style={styles.title}>CleanCity</Text>
+        <Animated.Text style={[styles.tagline, { opacity: fadeTagline }]}>
+          Gardons notre ville propre
+        </Animated.Text>
       </Animated.View>
-
-      <Animated.Text style={[styles.tagline, { opacity: fadeTagline }]}>
-        Gardons notre ville propre
-      </Animated.Text>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -62,6 +84,12 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
   },
+  logo: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    resizeMode: 'cover',
+  },
   title: {
     marginTop: 16,
     fontSize: 36,
@@ -69,8 +97,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   tagline: {
-    position: 'absolute',
-    bottom: 64,
+    marginTop: 32,
     fontSize: 18,
     color: 'rgba(255, 255, 255, 0.7)',
   },

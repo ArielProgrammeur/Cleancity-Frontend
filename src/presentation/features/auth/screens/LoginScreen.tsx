@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
@@ -13,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { AuthInput } from '../components/AuthInput';
+import { Image } from 'react-native';
 
 export function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -40,7 +40,7 @@ export function LoginScreen() {
       >
         <View style={styles.header}>
           <View style={styles.logoCircle}>
-            <Ionicons name="leaf" size={40} color="white" />
+            <Image source={require('../../../../../assets/logo.png')} style={styles.logoImage} />
           </View>
           <Text style={styles.welcomeTitle}>Welcome Back</Text>
           <Text style={styles.welcomeSubtitle}>
@@ -50,6 +50,7 @@ export function LoginScreen() {
 
         <View style={styles.form}>
           <AuthInput
+            label="Email"
             placeholder="Email address"
             value={email}
             onChangeText={setEmail}
@@ -58,6 +59,7 @@ export function LoginScreen() {
           />
 
           <AuthInput
+            label="Password"
             placeholder="Password"
             value={password}
             onChangeText={setPassword}
@@ -65,7 +67,7 @@ export function LoginScreen() {
             secureTextEntry
           />
 
-          <TouchableOpacity style={styles.forgotPassword}>
+          <TouchableOpacity style={styles.forgotPassword} onPress={() => router.push('/forgot-password')}>
             <Text style={styles.forgotPasswordText}>Forgot password?</Text>
           </TouchableOpacity>
 
@@ -116,7 +118,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 80,
+    paddingTop: 100,
     paddingBottom: 40,
   },
   header: {
@@ -136,6 +138,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 8,
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    resizeMode: 'cover',
   },
   welcomeTitle: {
     fontSize: 28,

@@ -29,9 +29,9 @@ export function OnboardingScreen() {
   const handleComplete = async () => {
     try {
       await markOnboardingComplete();
-      router.replace('/(tabs)');
+      router.replace('/login');
     } catch (error) {
-      router.replace('/(tabs)');
+      router.replace('/login');
     }
   };
 
