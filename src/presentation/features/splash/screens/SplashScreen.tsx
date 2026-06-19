@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 
 export function SplashScreen() {
   const fadeLogo = useRef(new Animated.Value(0)).current;
-  const scaleLogo = useRef(new Animated.Value(0.5)).current;
+  const scaleLogo = useRef(new Animated.Value(0.3)).current;
   const fadeTagline = useRef(new Animated.Value(0)).current;
   const fadeScreen = useRef(new Animated.Value(1)).current;
   const bgGreen = useRef(new Animated.Value(0)).current;
@@ -14,23 +14,23 @@ export function SplashScreen() {
       Animated.parallel([
         Animated.timing(fadeLogo, {
           toValue: 1,
-          duration: 3000,
+          duration: 4000,
           useNativeDriver: true,
         }),
         Animated.timing(scaleLogo, {
           toValue: 1,
-          duration: 3000,
+          duration: 4000,
           useNativeDriver: true,
         }),
         Animated.timing(bgGreen, {
           toValue: 1,
-          duration: 2500,
+          duration: 3500,
           useNativeDriver: false,
         }),
       ]),
       Animated.timing(fadeTagline, {
         toValue: 1,
-        duration: 1200,
+        duration: 1500,
         useNativeDriver: true,
       }),
     ]).start();
@@ -38,29 +38,18 @@ export function SplashScreen() {
     const timer = setTimeout(() => {
       Animated.timing(fadeScreen, {
         toValue: 0,
-        duration: 700,
+        duration: 800,
         useNativeDriver: true,
       }).start(() => {
         router.replace('/onboarding');
       });
-    }, 5500);
+    }, 6500);
 
     return () => clearTimeout(timer);
   }, []);
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          opacity: fadeScreen,
-          backgroundColor: bgGreen.interpolate({
-            inputRange: [0, 1],
-            outputRange: ['#FFFFFF', '#2E7D32'],
-          }),
-        },
-      ]}
-    >
+    <Animated.View style={[styles.container, { opacity: fadeScreen }]}>
       <Animated.View
         style={[styles.logoContainer, { opacity: fadeLogo, transform: [{ scale: scaleLogo }] }]}
       >

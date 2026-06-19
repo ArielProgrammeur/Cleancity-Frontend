@@ -30,7 +30,7 @@ export function OnboardingScreen() {
     try {
       await markOnboardingComplete();
       router.replace('/login');
-    } catch (error) {
+    } catch {
       router.replace('/login');
     }
   };

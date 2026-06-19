@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { categories } from '../data/categories';
@@ -8,73 +9,61 @@ interface CategorySelectorProps {
   onSelect: (category: ReportCategory) => void;
 }
 
-export function CategorySelector({ selected, onSelect }: CategorySelectorProps) {
+export const CategorySelector = memo(function CategorySelector({
+  selected,
+  onSelect,
+}: CategorySelectorProps) {
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>Category</Text>
-      <View style={styles.grid}>
-        {categories.map((cat) => {
-          const isActive = selected === cat.id;
-          return (
-            <TouchableOpacity
-              key={cat.id}
-              style={[
-                styles.card,
-                { backgroundColor: cat.bgColor },
-                isActive && { backgroundColor: cat.color, borderColor: cat.color },
-              ]}
-              onPress={() => onSelect(cat)}
-            >
-              <Ionicons
-                name={cat.icon}
-                size={24}
-                color={isActive ? '#FFFFFF' : cat.color}
-              />
-              <Text
-                style={[
-                  styles.cardLabel,
-                  isActive && { color: '#FFFFFF' },
-                ]}
-              >
-                {cat.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+    <View style={styles.grid}>
+      {categories.map((cat) => {
+        const active = selected === cat.id;
+        return (
+          <TouchableOpacity
+            key={cat.id}
+            style={[
+              styles.card,
+              { backgroundColor: cat.bgColor },
+              active && { backgroundColor: cat.color, borderColor: cat.color },
+            ]}
+            onPress={() => onSelect(cat)}
+            activeOpacity={0.75}
+          >
+            <Ionicons
+              name={cat.icon}
+              size={22}
+              color={active ? '#FFFFFF' : cat.color}
+            />
+            <Text style={[styles.label, active && styles.labelActive]}>
+              {cat.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
   },
   card: {
-    width: '30%',
+    width: '30.5%',
     alignItems: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    borderWidth: 2,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
     borderColor: 'transparent',
   },
-  cardLabel: {
+  label: {
     marginTop: 8,
     fontSize: 12,
     fontWeight: '600',
     color: '#374151',
+  },
+  labelActive: {
+    color: '#FFFFFF',
   },
 });

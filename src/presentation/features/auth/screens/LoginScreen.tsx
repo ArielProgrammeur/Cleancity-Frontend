@@ -8,11 +8,11 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { AuthInput } from '../components/AuthInput';
-import { Image } from 'react-native';
 
 export function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -100,7 +100,7 @@ export function LoginScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Don't have an account? </Text>
+          <Text style={styles.footerText}>Don&apos;t have an account? </Text>
           <TouchableOpacity onPress={() => router.push('/signup')}>
             <Text style={styles.footerLink}>Sign Up</Text>
           </TouchableOpacity>
