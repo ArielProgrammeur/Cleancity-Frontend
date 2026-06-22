@@ -1,31 +1,5 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ProfileScreen } from '../../src/presentation/features/profile';
 
-export default function Profile() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Profile</Text>
-      <Ionicons name="person-outline" size={48} color="#2E7D32" />
-      <Text style={styles.subtitle}>Coming soon</Text>
-    </View>
-  );
+export default function ProfileTab() {
+  return <ProfileScreen />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-});
