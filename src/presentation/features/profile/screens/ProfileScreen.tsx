@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, RefreshControl,
-  TextInput,
+  TextInput, KeyboardAvoidingView, Platform, Alert, Keyboard,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,6 +30,7 @@ export function ProfileScreen() {
   const { profile, badges, isLoading, error, updateProfile, refresh } = useProfile(repository);
   const [showEdit, setShowEdit] = useState(false);
   const [editName, setEditName] = useState('');
+  const [avatarUri, setAvatarUri] = useState<string | undefined>(undefined);
 
   const handleEdit = () => {
     if (!profile) return;
@@ -41,6 +43,34 @@ export function ProfileScreen() {
     await updateProfile({ name: editName.trim() });
     setShowEdit(false);
   };
+
+  const pickImage = useCallback(async (useCamera: boolean) => {
+    const permission = useCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert('Permission needed', `Please allow access to your ${useCamera ? 'camera' : 'photo library'} to set a profile picture.`);
+      return;
+    }
+
+    const result = useCamera
+      ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.8 })
+      : await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.8 });
+
+    if (!result.canceled && result.assets[0]) {
+      setAvatarUri(result.assets[0].uri);
+    }
+  }, []);
+
+  const handleAvatarPress = useCallback(() => {
+    Keyboard.dismiss();
+    Alert.alert('Profile Picture', '', [
+      { text: 'Take Photo', onPress: () => pickImage(true) },
+      { text: 'Choose from Gallery', onPress: () => pickImage(false) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, [pickImage]);
 
   if (isLoading || !profile) {
     return (
@@ -69,44 +99,51 @@ export function ProfileScreen() {
   }
 
   return (
-    <Animated.ScrollView
-      entering={FadeInDown.duration(400)}
+    <KeyboardAvoidingView
       style={styles.container}
-      contentContainerStyle={{ paddingBottom: 100 }}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor="#2563EB" colors={['#2563EB']} />}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
-      <View style={[styles.headerSection, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>Profile</Text>
-          <TouchableOpacity style={styles.editBtn} onPress={handleEdit} activeOpacity={0.7}>
-            <Ionicons name="pencil" size={16} color="#2563EB" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <ProfileHeader profile={profile} />
-      <StatsGrid impact={profile.impact} />
-      <AchievementSection badges={badges} />
-
-      <View style={styles.settingsSection}>
-        <Text style={styles.settingsTitle}>Settings</Text>
-        <View style={styles.settingsCard}>
-          {SETTINGS_ROWS.map((row, idx) => (
-            <TouchableOpacity key={row.label} style={[styles.settingRow, idx < SETTINGS_ROWS.length - 1 && styles.settingRowBorder]} activeOpacity={0.6}>
-              <View style={[styles.settingIcon, { backgroundColor: row.color + '12' }]}>
-                <Ionicons name={row.icon as any} size={18} color={row.color} />
-              </View>
-              <Text style={styles.settingLabel}>{row.label}</Text>
-              <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+      <Animated.ScrollView
+        entering={FadeInDown.duration(400)}
+        style={styles.flex}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor="#2563EB" colors={['#2563EB']} />}
+      >
+        <View style={[styles.headerSection, { paddingTop: insets.top + 12 }]}>
+          <View style={styles.headerRow}>
+            <Text style={styles.headerTitle}>Profile</Text>
+            <TouchableOpacity style={styles.editBtn} onPress={handleEdit} activeOpacity={0.7}>
+              <Ionicons name="pencil" size={16} color="#2563EB" />
             </TouchableOpacity>
-          ))}
+          </View>
         </View>
-      </View>
+
+        <ProfileHeader profile={profile} avatarUri={avatarUri} onAvatarPress={handleAvatarPress} />
+        <StatsGrid impact={profile.impact} />
+        <AchievementSection badges={badges} />
+
+        <View style={styles.settingsSection}>
+          <Text style={styles.settingsTitle}>Settings</Text>
+          <View style={styles.settingsCard}>
+            {SETTINGS_ROWS.map((row, idx) => (
+              <TouchableOpacity key={row.label} style={[styles.settingRow, idx < SETTINGS_ROWS.length - 1 && styles.settingRowBorder]} activeOpacity={0.6}>
+                <View style={[styles.settingIcon, { backgroundColor: row.color + '12' }]}>
+                  <Ionicons name={row.icon as any} size={18} color={row.color} />
+                </View>
+                <Text style={styles.settingLabel}>{row.label}</Text>
+                <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Animated.ScrollView>
 
       {showEdit && (
-        <View style={styles.modalOverlay}>
-          <Animated.View entering={FadeInDown.duration(200)} style={styles.modal}>
+        <TouchableOpacity activeOpacity={1} onPress={() => { Keyboard.dismiss(); setShowEdit(false); }} style={styles.modalOverlay}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={styles.modal}>
             <Text style={styles.modalTitle}>Edit Profile</Text>
             <TextInput
               style={styles.modalInput}
@@ -124,15 +161,16 @@ export function ProfileScreen() {
                 <Text style={styles.modalSaveText}>Save</Text>
               </TouchableOpacity>
             </View>
-          </Animated.View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       )}
-    </Animated.ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFB' },
+  flex: { flex: 1 },
   errorContainer: { alignItems: 'center', justifyContent: 'center', gap: 8 },
   errorTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
   errorDesc: { fontSize: 14, color: '#6B7280', textAlign: 'center', paddingHorizontal: 32 },
@@ -154,7 +192,7 @@ const styles = StyleSheet.create({
   settingIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   settingLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: '#111827' },
   modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center', zIndex: 100 },
-  modal: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, width: '85%', gap: 16 },
+  modal: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, width: '85%', gap: 16, maxHeight: '90%' },
   modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827', textAlign: 'center' },
   modalInput: { backgroundColor: '#F9FAFB', borderRadius: 14, paddingHorizontal: 16, height: 48, fontSize: 16, fontWeight: '600', color: '#111827', borderWidth: 1, borderColor: '#E5E7EB' },
   modalActions: { flexDirection: 'row', gap: 10 },

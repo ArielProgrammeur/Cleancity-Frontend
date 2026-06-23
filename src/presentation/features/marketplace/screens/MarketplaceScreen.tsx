@@ -1,82 +1,43 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet,
-  Alert, RefreshControl,
+  RefreshControl, StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { MarketplaceMockDatasource } from '../../../../data/datasources/MarketplaceMockDatasource';
 import { MarketplaceRepositoryImpl } from '../../../../data/repositories/MarketplaceRepositoryImpl';
 import { useMarketplace, getCategoryLabel, type ProductSort } from '../hooks/useMarketplace';
 import type { Product } from '../../../../domain/entities/Product';
 import { ProductCard } from '../components/ProductCard';
 import { CategoryFilter } from '../components/MarketplaceCategoryFilter';
+import { colors, spacing, radius, typography, shadows } from '../theme';
 
 const datasource = new MarketplaceMockDatasource();
 const repository = new MarketplaceRepositoryImpl(datasource);
 
-const SORT_OPTIONS: { key: ProductSort; label: string; icon: string }[] = [
-  { key: 'price-asc', label: 'Price: Low to High', icon: 'arrow-up' },
-  { key: 'price-desc', label: 'Price: High to Low', icon: 'arrow-down' },
-  { key: 'co2', label: 'Best for Planet', icon: 'leaf' },
-  { key: 'name', label: 'Name A–Z', icon: 'text' },
+const SORT_OPTIONS: { key: ProductSort; label: string }[] = [
+  { key: 'price-asc', label: 'Low Price' },
+  { key: 'price-desc', label: 'High Price' },
+  { key: 'co2', label: 'Eco Impact' },
+  { key: 'name', label: 'A-Z' },
 ];
 
-function SkeletonCard() {
+function renderSkeletons() {
   return (
-    <View style={skeletonStyles.card}>
-      <View style={skeletonStyles.topRow}>
-        <View style={skeletonStyles.icon} />
-        <View style={skeletonStyles.textBlock}>
-          <View style={skeletonStyles.titleLine} />
-          <View style={skeletonStyles.subtitleLine} />
+    <View style={styles.skGrid}>
+      {[0, 1, 2, 3].map((i) => (
+        <View key={i} style={styles.skCard}>
+          <View style={styles.skTop} />
+          <View style={styles.skBody}>
+            <View style={styles.skLine1} />
+            <View style={styles.skLine2} />
+            <View style={styles.skLine3} />
+          </View>
         </View>
-      </View>
-      <View style={skeletonStyles.priceRow}>
-        <View style={skeletonStyles.badge} />
-        <View style={skeletonStyles.smallBadge} />
-      </View>
+      ))}
     </View>
-  );
-}
-
-const skeletonStyles = StyleSheet.create({
-  card: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, marginHorizontal: 20, marginBottom: 12, borderWidth: 1, borderColor: '#F0F1F3' },
-  topRow: { flexDirection: 'row', marginBottom: 14 },
-  icon: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#F3F4F6', marginRight: 14 },
-  textBlock: { flex: 1, gap: 6, paddingTop: 4 },
-  titleLine: { height: 16, width: '60%', backgroundColor: '#F3F4F6', borderRadius: 4 },
-  subtitleLine: { height: 12, width: '40%', backgroundColor: '#F3F4F6', borderRadius: 4 },
-  priceRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  badge: { width: 80, height: 32, backgroundColor: '#F3F4F6', borderRadius: 12 },
-  smallBadge: { width: 60, height: 32, backgroundColor: '#F3F4F6', borderRadius: 12 },
-});
-
-function MPHeader({ insets, sortBy, onSort }: { insets: any; sortBy: string; onSort: () => void }) {
-  return (
-    <Animated.View entering={FadeInDown.duration(500).springify()} style={[hStyles.container, { paddingTop: insets.top + 12 }]}>
-      <View style={hStyles.mainRow}>
-        <View style={hStyles.leftCol}>
-          <View style={hStyles.iconRing}>
-            <View style={hStyles.iconInner}>
-              <Ionicons name="storefront" size={20} color="#FFFFFF" />
-            </View>
-          </View>
-          <View style={hStyles.titleBlock}>
-            <Text style={hStyles.title}>Marketplace</Text>
-            <View style={hStyles.subtitleRow}>
-              <Ionicons name="trending-up" size={12} color="#059669" />
-              <Text style={hStyles.subtitle}>Prices update daily</Text>
-            </View>
-          </View>
-        </View>
-        <TouchableOpacity style={[hStyles.iconBtn, sortBy !== 'price-asc' && hStyles.iconBtnActive]} onPress={onSort} activeOpacity={0.7}>
-          <Ionicons name="options-outline" size={19} color={sortBy !== 'price-asc' ? '#2563EB' : '#6B7280'} />
-          {sortBy !== 'price-asc' && <View style={hStyles.activeDot} />}
-        </TouchableOpacity>
-      </View>
-    </Animated.View>
   );
 }
 
@@ -89,57 +50,71 @@ export function MarketplaceScreen() {
   } = useMarketplace(repository);
   const [rawSearch, setRawSearch] = useState('');
 
-  const handleSort = useCallback(() => {
-    Alert.alert('Sort Products', '', [
-      ...SORT_OPTIONS.map((o) => ({
-        text: `${o.label}${o.key === sortBy ? ' ✓' : ''}`,
-        onPress: () => setSort(o.key),
-      })),
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  }, [sortBy, setSort]);
+  const handleSort = useCallback((key: ProductSort) => { setSort(key); }, [setSort]);
 
-  const header = useCallback(() => (
-    <View>
-      <View style={styles.sectionHeader}>
+  const listHeader = useCallback(() => (
+    <View style={styles.listHeaderInner}>
+      <View style={styles.resultsBar}>
         <View>
-          <Text style={styles.sectionTitle}>
-            {searchQuery.trim() ? 'Search Results' : activeCategory === 'all' ? 'All Materials' : getCategoryLabel(activeCategory)}
+          <Text style={styles.resultsTitle}>
+            {searchQuery.trim() ? `"${searchQuery}"` : getCategoryLabel(activeCategory)}
           </Text>
-          <Text style={styles.sectionCount}>{products.length} product{products.length !== 1 ? 's' : ''}</Text>
+          <Text style={styles.resultsCount}>
+            {products.length} material{products.length !== 1 ? 's' : ''}
+          </Text>
+        </View>
+        <View style={styles.sortRow}>
+          {SORT_OPTIONS.map((o) => (
+            <TouchableOpacity
+              key={o.key}
+              activeOpacity={0.7}
+              onPress={() => handleSort(o.key)}
+              style={[styles.sortPill, sortBy === o.key && styles.sortPillActive]}
+            >
+              <Text style={[styles.sortPillText, sortBy === o.key && styles.sortPillTextActive]}>
+                {o.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
     </View>
-  ), [activeCategory, searchQuery, products.length]);
+  ), [activeCategory, searchQuery, products.length, sortBy, handleSort]);
 
   const empty = useCallback(() => (
     <View style={styles.emptyState}>
-      <Ionicons name="search-outline" size={48} color="#D1D5DB" />
-      <Text style={styles.emptyTitle}>No products found</Text>
-      <Text style={styles.emptyDesc}>Try a different search or filter</Text>
+      <View style={styles.emptyCircle}>
+        <Ionicons name="cube-outline" size={32} color={colors.textTertiary} />
+      </View>
+      <Text style={styles.emptyTitle}>Nothing here</Text>
+      <Text style={styles.emptyDesc}>
+        {searchQuery.trim() ? 'No match for your search.' : 'This category is empty.'}
+      </Text>
     </View>
-  ), []);
+  ), [searchQuery]);
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
-        <MPHeader insets={insets} sortBy={sortBy} onSort={handleSort} />
-        <View style={{ paddingTop: 16 }}>{[0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)}</View>
+      <View style={styles.root}>
+        <HeaderBar insets={insets} count={0} />
+        {renderSkeletons()}
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.container}>
-        <MPHeader insets={insets} sortBy={sortBy} onSort={handleSort} />
-        <View style={styles.errorState}>
-          <Ionicons name="cloud-offline-outline" size={56} color="#D1D5DB" />
-          <Text style={styles.errorTitle}>Something went wrong</Text>
+      <View style={styles.root}>
+        <HeaderBar insets={insets} count={0} />
+        <View style={styles.errorBox}>
+          <View style={styles.emptyCircle}>
+            <Ionicons name="cloud-offline-outline" size={32} color={colors.textTertiary} />
+          </View>
+          <Text style={styles.errorTitle}>Connection issue</Text>
           <Text style={styles.errorDesc}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={refresh} activeOpacity={0.8}>
-            <Ionicons name="refresh" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
-            <Text style={styles.retryText}>Try Again</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={refresh}>
+            <Ionicons name="refresh" size={16} color={colors.white} />
+            <Text style={styles.retryText}>  Retry</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -147,25 +122,31 @@ export function MarketplaceScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <MPHeader insets={insets} sortBy={sortBy} onSort={handleSort} />
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" />
+      <HeaderBar insets={insets} count={products.length} />
 
-      <View style={styles.searchRow}>
-        <View style={styles.searchInput}>
-          <Ionicons name="search" size={17} color="#9CA3AF" />
+      <View style={styles.searchWrap}>
+        <View style={styles.searchRow}>
+          <Ionicons name="search" size={18} color={colors.textTertiary} />
           <TextInput
             style={styles.searchField}
             placeholder="Search materials..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textTertiary}
             value={rawSearch}
             onChangeText={(t) => { setRawSearch(t); setSearch(t); }}
             autoCorrect={false}
+            returnKeyType="search"
           />
           {rawSearch.length > 0 && (
             <TouchableOpacity onPress={() => { setRawSearch(''); setSearch(''); }}>
-              <Ionicons name="close-circle" size={17} color="#9CA3AF" />
+              <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
             </TouchableOpacity>
           )}
+          <View style={styles.searchDivider} />
+          <TouchableOpacity>
+            <Ionicons name="options-outline" size={20} color={colors.primary} />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -174,47 +155,121 @@ export function MarketplaceScreen() {
       <FlatList
         data={products}
         keyExtractor={(p: Product) => p.id}
-        ListHeaderComponent={header}
+        numColumns={2}
+        columnWrapperStyle={styles.col}
+        ListHeaderComponent={listHeader}
         ListEmptyComponent={empty}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor="#2563EB" colors={['#2563EB']} />}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor={colors.white} colors={[colors.white]} />
+        }
         renderItem={({ item, index }) => <ProductCard product={item} index={index} />}
       />
     </View>
   );
 }
 
-const hStyles = StyleSheet.create({
-  container: { paddingBottom: 14, paddingHorizontal: 20, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F0F1F3' },
-  mainRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  leftCol: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  iconRing: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#BFDBFE' },
-  iconInner: { width: 34, height: 34, borderRadius: 10, backgroundColor: '#2563EB', alignItems: 'center', justifyContent: 'center' },
-  titleBlock: { gap: 3 },
-  title: { fontSize: 22, fontWeight: '800', color: '#111827', letterSpacing: -0.4 },
-  subtitleRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  subtitle: { fontSize: 12, fontWeight: '600', color: '#059669' },
-  iconBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#F9FAFB', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F3F4F6' },
-  iconBtnActive: { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' },
-  activeDot: { position: 'absolute', top: 6, right: 6, width: 6, height: 6, borderRadius: 3, backgroundColor: '#2563EB' },
-});
+function HeaderBar({ insets, count }: { insets: any; count: number }) {
+  return (
+    <LinearGradient
+      colors={['#1E3A8A', '#3B82F6']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+    >
+      <View style={[styles.headerContainer, { paddingTop: insets.top + spacing.md }]}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerGreeting}>Marketplace</Text>
+            <View style={styles.headerSubRow}>
+              <View style={styles.headerDot} />
+              <Text style={styles.headerSub}>Browse recyclable materials</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.headerBtn}>
+            <Ionicons name="notifications-outline" size={22} color={colors.white} />
+            <View style={styles.headerBadge} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </LinearGradient>
+  );
+}
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFB' },
-  searchRow: { paddingHorizontal: 20, paddingVertical: 8 },
-  searchInput: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 14, paddingHorizontal: 14, height: 44, borderWidth: 1, borderColor: '#E5E7EB', gap: 8 },
-  searchField: { flex: 1, fontSize: 14, fontWeight: '500', color: '#111827', paddingVertical: 0 },
-  list: { paddingBottom: 100 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 4, marginBottom: 14 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
-  sectionCount: { fontSize: 13, color: '#9CA3AF', fontWeight: '500', marginTop: 2 },
-  emptyState: { alignItems: 'center', paddingVertical: 48, gap: 8 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: '#6B7280' },
-  emptyDesc: { fontSize: 13, color: '#9CA3AF', textAlign: 'center' },
-  errorState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 8 },
-  errorTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginTop: 8 },
-  errorDesc: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 20 },
-  retryBtn: { flexDirection: 'row', backgroundColor: '#2563EB', paddingHorizontal: 24, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
-  retryText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+  root: { flex: 1, backgroundColor: colors.background },
+
+  headerContainer: { paddingBottom: spacing.xxl, paddingHorizontal: spacing.xl },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerLeft: { gap: 3 },
+  headerGreeting: { fontSize: 26, fontWeight: '800', color: colors.white, letterSpacing: -0.5 },
+  headerSubRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#34D399' },
+  headerSub: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
+  headerBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  headerBadge: { position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' },
+
+  searchWrap: {
+    marginHorizontal: spacing.xl,
+    marginTop: -16,
+    marginBottom: spacing.xs,
+    ...shadows.lg,
+    borderRadius: radius.lg,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.lg,
+    height: 50,
+    gap: spacing.sm,
+  },
+  searchField: { flex: 1, ...typography.body, paddingVertical: 0 },
+  searchDivider: { width: 1, height: 24, backgroundColor: colors.border },
+
+  list: { paddingBottom: 100, paddingHorizontal: spacing.xl, gap: spacing.md },
+  col: { gap: spacing.md },
+  listHeaderInner: {},
+
+  resultsBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  resultsTitle: { ...typography.h3 },
+  resultsCount: { ...typography.caption, marginTop: 1 },
+  sortRow: { flexDirection: 'row', gap: 4 },
+  sortPill: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  sortPillActive: { backgroundColor: colors.primaryLight, borderColor: colors.primaryBorder },
+  sortPillText: { fontSize: 10, fontWeight: '700', color: colors.textTertiary },
+  sortPillTextActive: { color: colors.primary },
+
+  emptyState: { alignItems: 'center', paddingVertical: 56, gap: spacing.sm },
+  emptyCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, marginBottom: spacing.xs },
+  emptyTitle: { ...typography.body, fontWeight: '700', color: colors.textSecondary },
+  emptyDesc: { ...typography.caption, textAlign: 'center', paddingHorizontal: 32, lineHeight: 18 },
+
+  skGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing.xl, paddingTop: spacing.lg, gap: spacing.md },
+  skCard: { width: '47%', flexGrow: 1, backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
+  skTop: { height: 56, backgroundColor: colors.skeleton },
+  skBody: { padding: spacing.md, gap: spacing.sm },
+  skLine1: { height: 12, width: '40%', backgroundColor: colors.skeleton, borderRadius: 4 },
+  skLine2: { height: 14, width: '70%', backgroundColor: colors.skeleton, borderRadius: 4 },
+  skLine3: { height: 22, width: '55%', backgroundColor: colors.skeleton, borderRadius: 4 },
+
+  errorBox: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: spacing.sm },
+  errorTitle: { ...typography.body, fontWeight: '700' },
+  errorDesc: { ...typography.caption, textAlign: 'center', lineHeight: 18 },
+  retryBtn: { flexDirection: 'row', backgroundColor: colors.primary, paddingHorizontal: spacing.xxl, height: 46, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', marginTop: spacing.md },
+  retryText: { fontSize: 14, fontWeight: '700', color: colors.white },
 });
