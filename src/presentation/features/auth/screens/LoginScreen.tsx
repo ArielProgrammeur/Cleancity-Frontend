@@ -13,15 +13,29 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { AuthInput } from '../components/AuthInput';
+import { useAdmin } from '../../../../core/contexts/AdminContext';
+
+const ADMIN_EMAIL = 'admin@gmail.com';
+const ADMIN_PASSWORD = 'root';
 
 export function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const admin = useAdmin();
 
   const handleLogin = async () => {
     setIsLoading(true);
-    // Simuler une connexion (Firebase plus tard)
+
+    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+      const result = await admin.login(email, password);
+      setIsLoading(false);
+      if (result.success) {
+        router.replace('/admin' as any);
+      }
+      return;
+    }
+
     setTimeout(() => {
       setIsLoading(false);
       router.replace('/(tabs)');

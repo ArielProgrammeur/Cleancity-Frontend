@@ -3,16 +3,17 @@ import {
   View,
   Text,
   FlatList,
-  TouchableOpacity,
+  TouchableOpacity, TextInput,
   StyleSheet,
   Alert,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
-  FadeInDown,
-} from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { RewardMockDatasource } from '../../../../data/datasources/RewardMockDatasource';
 import { RewardRepositoryImpl } from '../../../../data/repositories/RewardRepositoryImpl';
 import { useRewards } from '../hooks/useRewards';
@@ -21,7 +22,6 @@ import type { UserRewardData } from '../../../../domain/repositories/IRewardRepo
 import type { SortOption } from '../hooks/useRewards';
 import { RewardHero } from '../components/RewardHero';
 import { CategoryFilter } from '../components/CategoryFilter';
-import { SearchBar } from '../components/SearchBar';
 import { RewardCard } from '../components/RewardCard';
 import { SuccessAnimation } from '../components/SuccessAnimation';
 import { HistorySheet } from '../components/HistorySheet';
@@ -150,6 +150,7 @@ export function RewardsScreen() {
   } = useRewards(repository);
 
   const [showHistory, setShowHistory] = useState(false);
+  const [rawSearch, setRawSearch] = useState(searchQuery);
 
   const handleClaim = useCallback(
     async (reward: Reward) => {
@@ -194,7 +195,6 @@ export function RewardsScreen() {
     () => (
       <View>
         <RewardHero userData={userData} claimedCount={claimedIds.size} />
-        <SearchBar value={searchQuery} onChange={setSearch} />
         <CategoryFilter activeCategory={activeCategory} onCategoryChange={setCategory} />
 
         <View style={styles.sectionHeader}>
@@ -211,7 +211,7 @@ export function RewardsScreen() {
         </View>
       </View>
     ),
-    [userData, claimedIds, searchQuery, activeCategory, rewards.length, setSearch, setCategory],
+    [userData, claimedIds, searchQuery, activeCategory, rewards.length],
   );
 
   const renderEmpty = useCallback(
@@ -229,16 +229,32 @@ export function RewardsScreen() {
     [searchQuery],
   );
 
+  const tier = userData?.currentTier ?? 'bronze';
+  const tierMeta = TIER_META[tier] ?? TIER_META.bronze;
+  const points = userData?.totalPoints ?? 0;
+  const isSorted = sortBy !== 'popular';
+
+  const headerContent = (search: string, setSearchFn: (t: string) => void) => (
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#FF8F00" />
+      <RewardsHeader
+        points={points}
+        tierMeta={tierMeta}
+        isSorted={isSorted}
+        claimedCount={claimedIds.size}
+        rawSearch={search}
+        setRawSearch={setSearchFn}
+        setSearch={setSearch}
+        onSortPress={handleSortPress}
+        onHistoryPress={() => setShowHistory(true)}
+      />
+    </>
+  );
+
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <RewardsHeader
-          userData={null}
-          sortBy="popular"
-          claimedCount={0}
-          onSortPress={() => {}}
-          onHistoryPress={() => {}}
-        />
+        {headerContent('', () => {})}
         <View style={styles.skeletonContainer}>
           {[0, 1, 2, 3].map((i) => (
             <SkeletonCard key={i} />
@@ -251,13 +267,7 @@ export function RewardsScreen() {
   if (error) {
     return (
       <View style={styles.container}>
-        <RewardsHeader
-          userData={null}
-          sortBy="popular"
-          claimedCount={0}
-          onSortPress={() => {}}
-          onHistoryPress={() => {}}
-        />
+        {headerContent('', () => {})}
         <View style={styles.errorState}>
           <Ionicons name="cloud-offline-outline" size={56} color="#D1D5DB" />
           <Text style={styles.errorTitle}>Something went wrong</Text>
@@ -272,14 +282,8 @@ export function RewardsScreen() {
   }
 
   return (
-      <View style={styles.container}>
-      <RewardsHeader
-        userData={userData}
-        sortBy={sortBy}
-        claimedCount={claimedIds.size}
-        onSortPress={handleSortPress}
-        onHistoryPress={() => setShowHistory(true)}
-      />
+    <View style={styles.container}>
+      {headerContent(rawSearch, setRawSearch)}
 
       <FlatList
         data={rewards}
@@ -292,8 +296,8 @@ export function RewardsScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={refresh}
-            tintColor="#2E7D32"
-            colors={['#2E7D32']}
+            tintColor="#FF8F00"
+            colors={['#FF8F00']}
           />
         }
         renderItem={({ item, index }) => (
@@ -305,6 +309,7 @@ export function RewardsScreen() {
             onClaim={handleClaim}
             onToggleWishlist={toggleWishlist}
             index={index}
+            onPress={() => router.push(`/rewards/${item.id}`)}
           />
         )}
       />
@@ -324,6 +329,8 @@ export function RewardsScreen() {
   );
 }
 
+const spacing = { md: 12, lg: 16, xl: 20 };
+
 const TIER_META: Record<string, { label: string; icon: string; color: string }> = {
   bronze: { label: 'Bronze', icon: 'shield-outline', color: '#CD7F32' },
   silver: { label: 'Silver', icon: 'shield-half-outline', color: '#A0A0A0' },
@@ -332,173 +339,155 @@ const TIER_META: Record<string, { label: string; icon: string; color: string }> 
 };
 
 function RewardsHeader({
-  userData,
-  sortBy,
-  claimedCount,
-  onSortPress,
-  onHistoryPress,
+  points, tierMeta, isSorted, claimedCount,
+  rawSearch, setRawSearch, setSearch,
+  onSortPress, onHistoryPress,
 }: {
-  userData: UserRewardData | null;
-  sortBy: SortOption;
-  claimedCount: number;
-  onSortPress: () => void;
-  onHistoryPress: () => void;
+  points: number; tierMeta: { label: string; icon: string; color: string };
+  isSorted: boolean; claimedCount: number;
+  rawSearch: string; setRawSearch: (t: string) => void; setSearch: (t: string) => void;
+  onSortPress: () => void; onHistoryPress: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  const isSorted = sortBy !== 'popular';
-  const tier = userData?.currentTier ?? 'bronze';
-  const tierMeta = TIER_META[tier] ?? TIER_META.bronze;
-  const points = userData?.totalPoints ?? 0;
+  const { t } = useTranslation();
 
   return (
-    <Animated.View
-      entering={FadeInDown.duration(500).springify()}
-      style={[headerStyles.container, { paddingTop: insets.top + 12 }]}
+    <LinearGradient
+      colors={['#FF8F00', '#FFB300']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
     >
-      <View style={headerStyles.mainRow}>
-        <View style={headerStyles.leftCol}>
-          <View style={headerStyles.iconRing}>
-            <View style={headerStyles.iconInner}>
-              <Ionicons name="gift" size={20} color="#FFFFFF" />
+      <View style={[headerStyles.container, { paddingTop: insets.top + spacing.md }]}>
+        <View style={headerStyles.mainRow}>
+          <View style={headerStyles.leftCol}>
+            <View style={headerStyles.iconWrap}>
+              <Ionicons name="gift" size={18} color="#FFFFFF" />
+            </View>
+            <View>
+              <View style={headerStyles.titleRow}>
+                <Text style={headerStyles.title}>{t('rewards.title')}</Text>
+                {points > 0 && (
+                  <View style={headerStyles.pointsPill}>
+                    <Ionicons name="flash" size={10} color="#FF8F00" />
+                    <Text style={headerStyles.pointsPillText}>{points.toLocaleString()}</Text>
+                  </View>
+                )}
+              </View>
+              <View style={headerStyles.subtitleRow}>
+                <Ionicons name={tierMeta.icon as any} size={11} color={tierMeta.color} />
+                <Text style={[headerStyles.subtitle, { color: tierMeta.color }]}>
+                  {tierMeta.label} Tier
+                </Text>
+                {claimedCount > 0 && (
+                  <>
+                    <Text style={headerStyles.subtitleDot}>•</Text>
+                    <Text style={headerStyles.subtitle}>{claimedCount} redeemed</Text>
+                  </>
+                )}
+              </View>
             </View>
           </View>
-          <View style={headerStyles.titleBlock}>
-            <View style={headerStyles.titleRow}>
-              <Text style={headerStyles.title}>Rewards</Text>
-              {points > 0 && (
-                <View style={headerStyles.pointsPill}>
-                  <Ionicons name="flash" size={10} color="#FF8F00" />
-                  <Text style={headerStyles.pointsPillText}>{points.toLocaleString()}</Text>
+
+          <View style={headerStyles.rightCol}>
+            <TouchableOpacity
+              style={[headerStyles.iconBtn, isSorted && headerStyles.iconBtnActive]}
+              onPress={onSortPress}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="options-outline" size={18} color={isSorted ? '#FFFFFF' : 'rgba(255,255,255,0.7)'} />
+            </TouchableOpacity>
+            <TouchableOpacity style={headerStyles.iconBtn} onPress={onHistoryPress} activeOpacity={0.7}>
+              <Ionicons name="time-outline" size={18} color="rgba(255,255,255,0.7)" />
+              {claimedCount > 0 && (
+                <View style={headerStyles.badgeDot}>
+                  <Text style={headerStyles.badgeText}>{claimedCount > 9 ? '9+' : claimedCount}</Text>
                 </View>
               )}
-            </View>
-            <View style={headerStyles.subtitleRow}>
-              <Ionicons name={tierMeta.icon as any} size={12} color={tierMeta.color} />
-              <Text style={[headerStyles.subtitle, { color: tierMeta.color }]}>
-                {tierMeta.label} Tier
-              </Text>
-              {claimedCount > 0 && (
-                <>
-                  <Text style={headerStyles.subtitleDot}>•</Text>
-                  <Text style={headerStyles.subtitle}>
-                    {claimedCount} redeemed
-                  </Text>
-                </>
-              )}
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 
-        <View style={headerStyles.rightCol}>
-          <TouchableOpacity
-            style={[headerStyles.iconBtn, isSorted && headerStyles.iconBtnActive]}
-            onPress={onSortPress}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name="options-outline"
-              size={19}
-              color={isSorted ? '#2E7D32' : '#6B7280'}
-            />
-            {isSorted && <View style={headerStyles.activeDot} />}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={headerStyles.iconBtn}
-            onPress={onHistoryPress}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="time-outline" size={19} color="#6B7280" />
-            {claimedCount > 0 && (
-              <View style={headerStyles.badgeDot}>
-                <Text style={headerStyles.badgeText}>{claimedCount > 9 ? '9+' : claimedCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+        <View style={headerStyles.searchRow}>
+          <Ionicons name="search" size={18} color="#94A3B8" />
+          <TextInput
+            style={headerStyles.searchField}
+            placeholder={t('rewards.search')}
+            placeholderTextColor="#94A3B8"
+            value={rawSearch}
+            onChangeText={(t) => { setRawSearch(t); setSearch(t); }}
+            autoCorrect={false}
+            autoCapitalize="none"
+          />
+          {rawSearch.length > 0 && (
+            <TouchableOpacity onPress={() => { setRawSearch(''); setSearch(''); }}>
+              <Ionicons name="close-circle" size={20} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
-    </Animated.View>
+    </LinearGradient>
   );
 }
 
 const headerStyles = StyleSheet.create({
   container: {
-    paddingBottom: 14,
-    paddingHorizontal: 20,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F1F3',
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.xl,
   },
   mainRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
   leftCol: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
   },
-  iconRing: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: '#F0FDF4',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-  },
-  iconInner: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: '#2E7D32',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  titleBlock: {
-    gap: 3,
+  iconWrap: {
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#111827',
+    color: '#FFFFFF',
     letterSpacing: -0.4,
   },
   pointsPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFBEB',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
     gap: 3,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
   },
   pointsPillText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#92400E',
+    color: '#FFD700',
   },
   subtitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    marginTop: 2,
   },
   subtitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: 'rgba(255,255,255,0.7)',
   },
   subtitleDot: {
     fontSize: 12,
-    color: '#D1D5DB',
+    color: 'rgba(255,255,255,0.3)',
     marginHorizontal: 2,
   },
   rightCol: {
@@ -509,25 +498,12 @@ const headerStyles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-    position: 'relative',
   },
   iconBtnActive: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
-  },
-  activeDot: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#2E7D32',
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
   badgeDot: {
     position: 'absolute',
@@ -545,6 +521,23 @@ const headerStyles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    height: 46,
+    marginTop: spacing.md,
+    gap: 8,
+  },
+  searchField: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#0F172A',
+    paddingVertical: 0,
   },
 });
 
@@ -614,7 +607,7 @@ const styles = StyleSheet.create({
   },
   retryBtn: {
     flexDirection: 'row',
-    backgroundColor: '#2E7D32',
+    backgroundColor: '#FF8F00',
     paddingHorizontal: 24,
     height: 46,
     borderRadius: 14,

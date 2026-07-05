@@ -1,25 +1,34 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import type { UserProfile } from '../../../../domain/entities/Profile';
 
 interface ProfileHeaderProps {
   profile: UserProfile;
+  avatarUri?: string;
+  onAvatarPress?: () => void;
 }
 
-export function ProfileHeader({ profile }: ProfileHeaderProps) {
+export function ProfileHeader({ profile, avatarUri, onAvatarPress }: ProfileHeaderProps) {
   const initial = profile.name.charAt(0).toUpperCase();
 
   return (
     <Animated.View entering={FadeInDown.duration(600).springify()} style={styles.container}>
-      <View style={styles.avatarRing}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initial}</Text>
+      <TouchableOpacity onPress={onAvatarPress} activeOpacity={0.8} style={styles.avatarRing}>
+        {avatarUri ? (
+          <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+        ) : (
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initial}</Text>
+          </View>
+        )}
+        <View style={styles.cameraOverlay}>
+          <Ionicons name="camera" size={14} color="#FFFFFF" />
         </View>
         <View style={styles.levelBadge}>
           <Text style={styles.levelText}>{profile.totalRewards}</Text>
         </View>
-      </View>
+      </TouchableOpacity>
 
       <Text style={styles.name}>{profile.name}</Text>
       <Text style={styles.email}>{profile.email}</Text>
@@ -77,15 +86,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  avatarImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+  },
   avatarText: {
     fontSize: 30,
     fontWeight: '800',
     color: '#FFFFFF',
   },
+  cameraOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
   levelBadge: {
     position: 'absolute',
     bottom: -2,
-    right: -2,
+    left: -2,
     backgroundColor: '#F59E0B',
     borderRadius: 12,
     paddingHorizontal: 8,

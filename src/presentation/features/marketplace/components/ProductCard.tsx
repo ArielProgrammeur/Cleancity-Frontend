@@ -1,220 +1,120 @@
 import { memo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import type { Product } from '../../../../domain/entities/Product';
+import { colors, spacing, radius, shadows } from '../theme';
+import { formatPricePerUnit } from '../../../../core/utils/format';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_GAP = 12;
+const SIDE_PADDING = spacing.xl * 2;
+const CARD_WIDTH = (SCREEN_WIDTH - SIDE_PADDING - CARD_GAP) / 2;
 
 interface ProductCardProps {
   product: Product;
   index: number;
+  onPress?: () => void;
 }
 
-const TREND_ICONS: Record<string, string> = { up: 'trending-up', down: 'trending-down', stable: 'remove' };
-const TREND_COLORS: Record<string, string> = { up: '#059669', down: '#DC2626', stable: '#6B7280' };
-
-export const ProductCard = memo(function ProductCard({ product, index }: ProductCardProps) {
+export const ProductCard = memo(function ProductCard({ product, index, onPress }: ProductCardProps) {
   return (
-    <Animated.View
-      entering={FadeInUp.delay(index * 70).springify().damping(15)}
-      style={styles.card}
-    >
-      <View style={styles.topRow}>
-        <View style={[styles.iconWrap, { backgroundColor: product.bgColor }]}>
-          <Ionicons name={product.icon as any} size={24} color={product.color} />
-        </View>
-        <View style={styles.topInfo}>
-          <Text style={styles.name} numberOfLines={1}>{product.name}</Text>
-          <Text style={styles.desc} numberOfLines={1}>{product.description}</Text>
-        </View>
-      </View>
-
-      <View style={styles.priceRow}>
-        <View style={styles.priceBlock}>
-          <Text style={styles.priceUnit}>Price</Text>
-          <View style={styles.priceValueRow}>
-            <Text style={styles.priceValue}>€{product.pricePerKg.toFixed(2)}</Text>
-            <Text style={styles.priceUnitLabel}>/ {product.unit}</Text>
-          </View>
-          <View style={[styles.trendBadge, { backgroundColor: TREND_COLORS[product.priceTrend] + '15' }]}>
-            <Ionicons name={TREND_ICONS[product.priceTrend] as any} size={12} color={TREND_COLORS[product.priceTrend]} />
-            <Text style={[styles.trendText, { color: TREND_COLORS[product.priceTrend] }]}>
-              {product.priceTrend === 'up' ? '+5.2%' : product.priceTrend === 'down' ? '-3.1%' : '0.0%'}
-            </Text>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={{ width: CARD_WIDTH, marginBottom: CARD_GAP }}>
+      <Animated.View
+        entering={FadeInUp.delay(index * 50).springify().damping(18)}
+        style={styles.card}
+      >
+        <View style={[styles.iconWrap, { backgroundColor: product.color + '10' }]}>
+          <View style={[styles.iconCircle, { backgroundColor: product.color + '20' }]}>
+            <Ionicons name={product.icon as any} size={22} color={product.color} />
           </View>
         </View>
 
-        <View style={styles.impactBlock}>
-          <Text style={styles.impactTitle}>Impact</Text>
-          <View style={styles.impactRow}>
-            <Ionicons name="leaf-outline" size={12} color="#059669" />
-            <Text style={styles.impactValue}>{product.co2SavedPerKg}kg CO₂</Text>
-          </View>
-          <View style={styles.impactRow}>
-            <Ionicons name="flash-outline" size={12} color="#D97706" />
-            <Text style={styles.impactValue}>{product.energySavedPerKg}kWh</Text>
-          </View>
-        </View>
-      </View>
+        <View style={styles.body}>
+          <Text style={styles.name} numberOfLines={2}>{product.name}</Text>
 
-      {product.tips && product.tips.length > 0 && (
-        <View style={styles.tipsSection}>
-          {product.tips.slice(0, 2).map((tip, i) => (
-            <View key={i} style={styles.tipRow}>
-              <Ionicons name="bulb-outline" size={11} color="#F59E0B" />
-              <Text style={styles.tipText}>{tip}</Text>
+          <Text style={styles.price}>
+            {formatPricePerUnit(product.pricePerKg, product.unit)}
+          </Text>
+
+          <View style={styles.meta}>
+            <View style={styles.co2Badge}>
+              <Ionicons name="leaf" size={10} color={colors.accent} />
+              <Text style={styles.co2Text}>{product.co2SavedPerKg}kg</Text>
             </View>
-          ))}
+            <Text style={styles.range}>{product.minKg}–{product.maxKg} {product.unit}</Text>
+          </View>
         </View>
-      )}
-
-      <View style={styles.rangeRow}>
-        <Ionicons name="scale-outline" size={13} color="#9CA3AF" />
-        <Text style={styles.rangeText}>{product.minKg}–{product.maxKg} {product.unit} accepted</Text>
-      </View>
-    </Animated.View>
+      </Animated.View>
+    </TouchableOpacity>
   );
 });
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 18,
-    marginHorizontal: 20,
-    marginBottom: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#F0F1F3',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  topRow: {
-    flexDirection: 'row',
-    marginBottom: 14,
+    borderColor: colors.border,
+    ...shadows.md,
   },
   iconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
   },
-  topInfo: {
-    flex: 1,
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
     justifyContent: 'center',
   },
+  body: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    gap: 6,
+  },
   name: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#111827',
-    marginBottom: 2,
+    color: colors.text,
+    lineHeight: 17,
   },
-  desc: {
-    fontSize: 12,
-    color: '#6B7280',
-    lineHeight: 16,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-    gap: 12,
-  },
-  priceBlock: {
-    flex: 1,
+  price: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.text,
   },
   priceUnit: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#9CA3AF',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  priceValueRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 2,
-  },
-  priceValue: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.5,
-  },
-  priceUnitLabel: {
-    fontSize: 12,
-    color: '#9CA3AF',
     fontWeight: '500',
+    color: colors.textTertiary,
   },
-  trendBadge: {
+  meta: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    gap: 4,
-    marginTop: 4,
+    justifyContent: 'space-between',
   },
-  trendText: {
-    fontSize: 11,
+  co2Badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: colors.accentLight,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  co2Text: {
+    fontSize: 10,
     fontWeight: '700',
+    color: colors.accent,
   },
-  impactBlock: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 10,
-    minWidth: 90,
-  },
-  impactTitle: {
+  range: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#9CA3AF',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  impactRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 3,
-  },
-  impactValue: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#374151',
-  },
-  tipsSection: {
-    backgroundColor: '#FFFBEB',
-    borderRadius: 12,
-    padding: 10,
-    marginBottom: 10,
-    gap: 4,
-  },
-  tipRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  tipText: {
-    fontSize: 11,
-    color: '#92400E',
-    fontWeight: '500',
-    flex: 1,
-  },
-  rangeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  rangeText: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    fontWeight: '500',
+    color: colors.textTertiary,
   },
 });

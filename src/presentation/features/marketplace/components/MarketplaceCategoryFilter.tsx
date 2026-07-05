@@ -1,9 +1,8 @@
-import { useRef, useEffect } from 'react';
-import { ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn } from 'react-native-reanimated';
 import type { ProductCategory } from '../../../../domain/entities/Product';
 import { PRODUCT_CATEGORIES, getCategoryLabel, getCategoryIcon } from '../hooks/useMarketplace';
+import { colors, spacing, radius, categoryColors } from '../theme';
 
 interface CategoryFilterProps {
   activeCategory: ProductCategory | 'all';
@@ -11,60 +10,61 @@ interface CategoryFilterProps {
 }
 
 export function CategoryFilter({ activeCategory, onCategoryChange }: CategoryFilterProps) {
-  const scrollRef = useRef<ScrollView>(null);
-  const positions = useRef<Record<string, number>>({});
-
-  useEffect(() => {
-    const idx = PRODUCT_CATEGORIES.indexOf(activeCategory);
-    if (idx >= 0 && scrollRef.current) {
-      const x = positions.current[activeCategory] ?? idx * 90;
-      scrollRef.current.scrollTo({ x: Math.max(0, x - 20), animated: true });
-    }
-  }, [activeCategory]);
-
   return (
-    <ScrollView
-      ref={scrollRef}
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.container}
-    >
-      {PRODUCT_CATEGORIES.map((cat, idx) => {
-        const isActive = cat === activeCategory;
-        return (
-          <TouchableOpacity
-            key={cat}
-            activeOpacity={0.7}
-            onPress={() => onCategoryChange(cat)}
-            onLayout={(e) => { positions.current[cat] = e.nativeEvent.layout.x; }}
-            style={[styles.chip, isActive && styles.chipActive]}
-          >
-            <Animated.View entering={FadeIn.delay(idx * 40).duration(250)} style={styles.chipInner}>
+    <View style={styles.wrapper}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.row}
+      >
+        {PRODUCT_CATEGORIES.map((cat) => {
+          const isActive = cat === activeCategory;
+          const bg = categoryColors[cat] ?? '#4F46E5';
+          return (
+            <TouchableOpacity
+              key={cat}
+              activeOpacity={0.8}
+              onPress={() => onCategoryChange(cat)}
+              style={[
+                styles.chip,
+                { backgroundColor: isActive ? bg : bg + '18', borderColor: isActive ? bg : bg + '30' },
+              ]}
+            >
               <Ionicons
                 name={getCategoryIcon(cat) as any}
-                size={14}
-                color={isActive ? '#FFFFFF' : '#6B7280'}
+                size={15}
+                color={isActive ? colors.white : bg}
               />
-              <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+              <Text style={[styles.label, { color: isActive ? colors.white : bg }]}>
                 {getCategoryLabel(cat)}
               </Text>
-            </Animated.View>
-          </TouchableOpacity>
-        );
-      })}
-    </ScrollView>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { paddingHorizontal: 20, paddingVertical: 8, gap: 7 },
-  chip: {
-    paddingHorizontal: 13, paddingVertical: 8, borderRadius: 20,
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E7EB',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
+  wrapper: {
+    paddingVertical: spacing.sm,
   },
-  chipActive: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-  chipInner: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  chipText: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
-  chipTextActive: { color: '#FFFFFF' },
+  row: {
+    paddingHorizontal: spacing.xl,
+    gap: 8,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: radius.lg,
+    paddingHorizontal: 14,
+    height: 38,
+    gap: 6,
+    borderWidth: 1,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
 });

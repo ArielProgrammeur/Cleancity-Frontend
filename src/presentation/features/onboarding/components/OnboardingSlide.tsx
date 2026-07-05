@@ -1,5 +1,4 @@
-import { View, Text, Dimensions, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, Image, Dimensions, StyleSheet } from 'react-native';
 import type { OnboardingSlide as OnboardingSlideData } from '../data/slides';
 import { StepIndicator } from '../../../shared/StepIndicator';
 
@@ -12,11 +11,21 @@ interface OnboardingSlideProps {
 }
 
 export function OnboardingSlide({ slide, currentIndex, total }: OnboardingSlideProps) {
+  const circleSize = slide.circleSize ?? 0.6;
   return (
-    <View style={[styles.container, { width }]}>
+    <View style={[styles.container, { width, backgroundColor: slide.backgroundColor }]}>
       <View style={styles.inner}>
-        <View style={styles.iconCircle}>
-          <Ionicons name={slide.icon} size={80} color="white" />
+        <View style={[styles.imageCircle, {
+          width: width * circleSize,
+          height: width * circleSize,
+          borderRadius: width * circleSize / 2,
+          backgroundColor: slide.backgroundColor + '40',
+        }]}>
+          <Image
+            source={slide.image}
+            style={styles.image}
+            resizeMode={slide.imageResizeMode ?? 'cover'}
+          />
         </View>
 
         <Text style={styles.title}>{slide.title}</Text>
@@ -37,11 +46,15 @@ const styles = StyleSheet.create({
   inner: {
     alignItems: 'center',
   },
-  iconCircle: {
+  imageCircle: {
+    overflow: 'hidden',
     marginBottom: 32,
-    borderRadius: 9999,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    padding: 24,
+    borderWidth: 4,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
   },
   title: {
     marginBottom: 16,

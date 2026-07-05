@@ -1,17 +1,17 @@
-import type { Ionicons } from '@expo/vector-icons';
-
 export interface OnboardingSlide {
   id: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  image: number;
   title: string;
   description: string;
   backgroundColor: string;
+  imageResizeMode?: 'cover' | 'contain';
+  circleSize?: number;
 }
 
 export const slides: OnboardingSlide[] = [
   {
     id: '1',
-    icon: 'trash-bin',
+    image: require('../../../../../assets/onboarding1.png'),
     title: 'Signalez les déchets',
     description:
       'Vous voyez un dépôt sauvage ou un encombrant dans la rue ? Prenez une photo, décrivez-le et signalez-le en un clic.',
@@ -19,7 +19,7 @@ export const slides: OnboardingSlide[] = [
   },
   {
     id: '2',
-    icon: 'trophy',
+    image: require('../../../../../assets/onboarding2.png'),
     title: 'Gagnez des points',
     description:
       'Chaque signalement vous rapporte des points. Plus vous signalez, plus vous cumulez !',
@@ -27,10 +27,11 @@ export const slides: OnboardingSlide[] = [
   },
   {
     id: '3',
-    icon: 'gift',
+    image: require('../../../../../assets/onboarding3.png'),
+    imageResizeMode: 'contain',
     title: 'Échangez vos récompenses',
     description:
-      'Utilisez vos points pour obtenir des bons d’achat, des réductions, ou d’autres cadeaux. Votre ville vous remercie !',
+      'Utilisez vos points pour obtenir des bons d\'achat, des réductions, ou d\'autres cadeaux. Votre ville vous remercie !',
     backgroundColor: '#0D3B0F',
   },
 ];

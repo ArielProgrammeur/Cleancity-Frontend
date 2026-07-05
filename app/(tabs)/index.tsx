@@ -1,6 +1,7 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, type DimensionValue } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, type DimensionValue } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useUser } from '../../src/core/contexts/UserContext';
 
 const features = [
   {
@@ -33,16 +34,30 @@ const features = [
     desc: 'View pickup schedule',
     color: '#7C3AED',
     bg: '#F5F3FF',
-    route: '/(tabs)/index',
+    route: '/collection-schedule',
   },
 ];
 
 const recentReports = [
-  { title: 'Plastic bottle near park', date: '2h ago', status: 'approved' as const },
-  { title: 'Glass on Main Street', date: '5h ago', status: 'pending' as const },
-  { title: 'Electronics downtown', date: '1d ago', status: 'collected' as const },
-  { title: 'Organic waste behind mall', date: '2d ago', status: 'collected' as const },
+  { id: 'r1', title: 'Plastic bottle near park', date: '2h ago', status: 'approved' as const },
+  { id: 'r2', title: 'Glass on Main Street', date: '5h ago', status: 'pending' as const },
+  { id: 'r3', title: 'Electronics downtown', date: '1d ago', status: 'collected' as const },
+  { id: 'r4', title: 'Organic waste behind mall', date: '2d ago', status: 'collected' as const },
 ];
+function ReportEntry({ id, title, date, status }: { id: string; title: string; date: string; status: string }) {
+  return (
+    <TouchableOpacity key={id} style={styles.reportRow} onPress={() => router.push(`/report/${id}`)}>
+      <View style={styles.reportLeft}>
+        <View style={styles.reportDot} />
+        <View>
+          <Text style={styles.reportTitle}>{title}</Text>
+          <Text style={styles.reportDate}>{date}</Text>
+        </View>
+      </View>
+      <StatusBadge status={status} />
+    </TouchableOpacity>
+  );
+}
 
 function StatusBadge({ status }: { status: string }) {
   const config = {
@@ -59,6 +74,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function Dashboard() {
+  const { avatarUri } = useUser();
   const levelProgress = 0.65;
 
   return (
@@ -66,15 +82,19 @@ export default function Dashboard() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={24} color="#FFFFFF" />
-            </View>
+            <TouchableOpacity style={styles.avatar} onPress={() => router.push('/(tabs)/profile')}>
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+              ) : (
+                <Ionicons name="person" size={24} color="#FFFFFF" />
+              )}
+            </TouchableOpacity>
             <View>
               <Text style={styles.greeting}>Welcome back,</Text>
               <Text style={styles.name}>Ariel 👋</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.notifButton}>
+          <TouchableOpacity style={styles.notifButton} onPress={() => router.push('/notifications')}>
             <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
             <View style={styles.notifBadge} />
           </TouchableOpacity>
@@ -161,18 +181,14 @@ export default function Dashboard() {
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Recent Reports</Text>
-        {recentReports.map((r, i) => (
-          <View key={i} style={styles.reportRow}>
-            <View style={styles.reportLeft}>
-              <View style={styles.reportDot} />
-              <View>
-                <Text style={styles.reportTitle}>{r.title}</Text>
-                <Text style={styles.reportDate}>{r.date}</Text>
-              </View>
-            </View>
-            <StatusBadge status={r.status} />
-          </View>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Reports</Text>
+          <TouchableOpacity onPress={() => router.push('/report-history')}>
+            <Text style={styles.viewAll}>View All</Text>
+          </TouchableOpacity>
+        </View>
+        {recentReports.map((r) => (
+          <ReportEntry key={r.id} {...r} />
         ))}
       </ScrollView>
     </View>
@@ -210,6 +226,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.4)',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   greeting: {
     fontSize: 13,
@@ -346,12 +368,22 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 2,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 16,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#111827',
-    marginTop: 24,
-    marginBottom: 16,
+  },
+  viewAll: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2E7D32',
   },
   grid: {
     flexDirection: 'row',

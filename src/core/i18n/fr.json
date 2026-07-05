@@ -1,0 +1,60 @@
+{
+  "common": {
+    "appName": "CleanCity",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "confirm": "Confirmer",
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue",
+    "retry": "Réessayer",
+    "material": "matériau",
+    "material_plural": "matériaux"
+  },
+  "profile": {
+    "title": "Profil",
+    "edit": "Modifier le profil",
+    "settings": "Paramètres",
+    "language": "Langue",
+    "notifications": "Notifications",
+    "privacy": "Confidentialité",
+    "theme": "Thème",
+    "about": "À propos"
+  },
+  "language": {
+    "title": "Langue",
+    "select": "Choisissez votre langue préférée",
+    "en": "English",
+    "fr": "Français",
+    "es": "Español",
+    "de": "Deutsch",
+    "it": "Italiano",
+    "pt": "Português",
+    "ar": "العربية",
+    "zh": "中文"
+  },
+  "market": {
+    "title": "Marketplace",
+    "subtitle": "Achetez & vendez des matériaux recyclables",
+    "search": "Rechercher des matériaux...",
+    "sort": {
+      "price-asc": "Prix bas",
+      "price-desc": "Prix haut",
+      "co2": "Impact éco",
+      "name": "A-Z"
+    }
+  },
+  "rewards": {
+    "title": "Récompenses",
+    "search": "Rechercher des récompenses..."
+  },
+  "report": {
+    "title": "Nouveau signalement",
+    "heading": "Signaler un déchet",
+    "subheading": "Aidez-nous à garder la ville propre"
+  },
+  "onboarding": {
+    "skip": "Passer",
+    "next": "Suivant",
+    "getStarted": "Commencer"
+  }
+}
