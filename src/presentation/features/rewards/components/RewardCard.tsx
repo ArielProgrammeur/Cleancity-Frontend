@@ -17,6 +17,7 @@ interface RewardCardProps {
   onClaim: (reward: Reward) => void;
   onToggleWishlist: (rewardId: string) => void;
   index: number;
+  onPress?: () => void;
 }
 
 export const RewardCard = memo(function RewardCard({
@@ -27,6 +28,7 @@ export const RewardCard = memo(function RewardCard({
   onClaim,
   onToggleWishlist,
   index,
+  onPress,
 }: RewardCardProps) {
   const scale = useSharedValue(1);
 
@@ -55,18 +57,20 @@ export const RewardCard = memo(function RewardCard({
       <Animated.View
         entering={FadeInUp.delay(index * 80).springify().damping(15)}
       >
-        <View style={styles.claimedCard}>
-          <View style={styles.claimedLeft}>
-            <View style={[styles.claimedIconWrap, { backgroundColor: reward.bgColor }]}>
-              <Ionicons name={reward.icon as any} size={20} color={reward.color} />
+        <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+          <View style={styles.claimedCard}>
+            <View style={styles.claimedLeft}>
+              <View style={[styles.claimedIconWrap, { backgroundColor: reward.bgColor }]}>
+                <Ionicons name={reward.icon as any} size={20} color={reward.color} />
+              </View>
+              <View>
+                <Text style={styles.claimedName}>{reward.name}</Text>
+                <Text style={styles.claimedLabel}>Redeemed</Text>
+              </View>
             </View>
-            <View>
-              <Text style={styles.claimedName}>{reward.name}</Text>
-              <Text style={styles.claimedLabel}>Redeemed</Text>
-            </View>
+            <Ionicons name="checkmark-circle" size={22} color="#2E7D32" />
           </View>
-          <Ionicons name="checkmark-circle" size={22} color="#2E7D32" />
-        </View>
+        </TouchableOpacity>
       </Animated.View>
     );
   }
@@ -76,6 +80,7 @@ export const RewardCard = memo(function RewardCard({
       entering={FadeInUp.delay(index * 80).springify().damping(15)}
       style={cardAnimatedStyle}
     >
+      <TouchableOpacity onPress={onPress} activeOpacity={0.95}>
       <View style={styles.card}>
         <TouchableOpacity
           style={styles.wishlistBtn}
@@ -169,6 +174,7 @@ export const RewardCard = memo(function RewardCard({
           </Text>
         </View>
       </View>
+      </TouchableOpacity>
     </Animated.View>
   );
 });

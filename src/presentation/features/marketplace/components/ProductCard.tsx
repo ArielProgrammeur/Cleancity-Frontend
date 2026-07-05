@@ -1,57 +1,57 @@
 import { memo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import type { Product } from '../../../../domain/entities/Product';
-import { colors, spacing, radius, shadows, typography } from '../theme';
+import { colors, spacing, radius, shadows } from '../theme';
+import { formatPricePerUnit } from '../../../../core/utils/format';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_GAP = 12;
+const SIDE_PADDING = spacing.xl * 2;
+const CARD_WIDTH = (SCREEN_WIDTH - SIDE_PADDING - CARD_GAP) / 2;
 
 interface ProductCardProps {
   product: Product;
   index: number;
+  onPress?: () => void;
 }
 
-export const ProductCard = memo(function ProductCard({ product, index }: ProductCardProps) {
+export const ProductCard = memo(function ProductCard({ product, index, onPress }: ProductCardProps) {
   return (
-    <Animated.View
-      entering={FadeInUp.delay(index * 50).springify().damping(18)}
-      style={styles.wrapper}
-    >
-      <View style={[styles.topBar, { backgroundColor: product.color + '15' }]}>
-        <View style={[styles.iconCircle, { backgroundColor: product.color + '25' }]}>
-          <Ionicons name={product.icon as any} size={20} color={product.color} />
-        </View>
-      </View>
-
-      <View style={styles.body}>
-        <Text style={styles.category}>{product.category}</Text>
-        <Text style={styles.name} numberOfLines={1}>{product.name}</Text>
-
-        <View style={styles.priceRow}>
-          <Text style={styles.priceSymbol}>€</Text>
-          <Text style={styles.priceValue}>{product.pricePerKg.toFixed(2)}</Text>
-          <Text style={styles.priceUnit}>/{product.unit}</Text>
-        </View>
-
-        <View style={styles.metaRow}>
-          <View style={styles.badge}>
-            <Ionicons name="leaf" size={10} color={colors.accent} />
-            <Text style={styles.badgeText}>{product.co2SavedPerKg}kg CO₂</Text>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={{ width: CARD_WIDTH, marginBottom: CARD_GAP }}>
+      <Animated.View
+        entering={FadeInUp.delay(index * 50).springify().damping(18)}
+        style={styles.card}
+      >
+        <View style={[styles.iconWrap, { backgroundColor: product.color + '10' }]}>
+          <View style={[styles.iconCircle, { backgroundColor: product.color + '20' }]}>
+            <Ionicons name={product.icon as any} size={22} color={product.color} />
           </View>
-          <Text style={styles.range}>
-            {product.minKg}–{product.maxKg} {product.unit}
-          </Text>
         </View>
-      </View>
-    </Animated.View>
+
+        <View style={styles.body}>
+          <Text style={styles.name} numberOfLines={2}>{product.name}</Text>
+
+          <Text style={styles.price}>
+            {formatPricePerUnit(product.pricePerKg, product.unit)}
+          </Text>
+
+          <View style={styles.meta}>
+            <View style={styles.co2Badge}>
+              <Ionicons name="leaf" size={10} color={colors.accent} />
+              <Text style={styles.co2Text}>{product.co2SavedPerKg}kg</Text>
+            </View>
+            <Text style={styles.range}>{product.minKg}–{product.maxKg} {product.unit}</Text>
+          </View>
+        </View>
+      </Animated.View>
+    </TouchableOpacity>
   );
 });
 
-const CARD_HEIGHT = 172;
-
 const styles = StyleSheet.create({
-  wrapper: {
-    flex: 1,
-    height: CARD_HEIGHT,
+  card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     overflow: 'hidden',
@@ -59,78 +59,62 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     ...shadows.md,
   },
-  topBar: {
-    height: 56,
+  iconWrap: {
+    paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
   body: {
-    flex: 1,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.md,
-    justifyContent: 'space-between',
-  },
-  category: {
-    ...typography.tiny,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    color: colors.textTertiary,
+    gap: 6,
   },
   name: {
-    ...typography.body,
+    fontSize: 13,
     fontWeight: '700',
-    marginBottom: 2,
+    color: colors.text,
+    lineHeight: 17,
   },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: spacing.sm,
-  },
-  priceSymbol: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    marginRight: 1,
-  },
-  priceValue: {
-    fontSize: 22,
+  price: {
+    fontSize: 17,
     fontWeight: '800',
     color: colors.text,
-    letterSpacing: -0.5,
   },
   priceUnit: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
     color: colors.textTertiary,
-    marginLeft: 2,
   },
-  metaRow: {
+  meta: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  badge: {
+  co2Badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
     backgroundColor: colors.accentLight,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: radius.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
-  badgeText: {
-    ...typography.small,
+  co2Text: {
+    fontSize: 10,
+    fontWeight: '700',
     color: colors.accent,
   },
   range: {
-    ...typography.small,
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textTertiary,
   },
 });

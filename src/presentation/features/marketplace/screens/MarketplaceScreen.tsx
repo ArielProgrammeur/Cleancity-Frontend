@@ -3,9 +3,11 @@ import {
   View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet,
   RefreshControl, StatusBar,
 } from 'react-native';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { MarketplaceMockDatasource } from '../../../../data/datasources/MarketplaceMockDatasource';
 import { MarketplaceRepositoryImpl } from '../../../../data/repositories/MarketplaceRepositoryImpl';
 import { useMarketplace, getCategoryLabel, type ProductSort } from '../hooks/useMarketplace';
@@ -13,6 +15,7 @@ import type { Product } from '../../../../domain/entities/Product';
 import { ProductCard } from '../components/ProductCard';
 import { CategoryFilter } from '../components/MarketplaceCategoryFilter';
 import { colors, spacing, radius, typography, shadows } from '../theme';
+import i18n from '../../../../core/i18n';
 
 const datasource = new MarketplaceMockDatasource();
 const repository = new MarketplaceRepositoryImpl(datasource);
@@ -43,6 +46,7 @@ function renderSkeletons() {
 
 export function MarketplaceScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const {
     products, activeCategory, searchQuery, sortBy,
     isLoading, isRefreshing, error, refresh,
@@ -51,35 +55,6 @@ export function MarketplaceScreen() {
   const [rawSearch, setRawSearch] = useState('');
 
   const handleSort = useCallback((key: ProductSort) => { setSort(key); }, [setSort]);
-
-  const listHeader = useCallback(() => (
-    <View style={styles.listHeaderInner}>
-      <View style={styles.resultsBar}>
-        <View>
-          <Text style={styles.resultsTitle}>
-            {searchQuery.trim() ? `"${searchQuery}"` : getCategoryLabel(activeCategory)}
-          </Text>
-          <Text style={styles.resultsCount}>
-            {products.length} material{products.length !== 1 ? 's' : ''}
-          </Text>
-        </View>
-        <View style={styles.sortRow}>
-          {SORT_OPTIONS.map((o) => (
-            <TouchableOpacity
-              key={o.key}
-              activeOpacity={0.7}
-              onPress={() => handleSort(o.key)}
-              style={[styles.sortPill, sortBy === o.key && styles.sortPillActive]}
-            >
-              <Text style={[styles.sortPillText, sortBy === o.key && styles.sortPillTextActive]}>
-                {o.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-    </View>
-  ), [activeCategory, searchQuery, products.length, sortBy, handleSort]);
 
   const empty = useCallback(() => (
     <View style={styles.emptyState}>
@@ -96,7 +71,7 @@ export function MarketplaceScreen() {
   if (isLoading) {
     return (
       <View style={styles.root}>
-        <HeaderBar insets={insets} count={0} />
+        <HeaderBar insets={insets} rawSearch="" setRawSearch={() => {}} setSearch={() => {}} />
         {renderSkeletons()}
       </View>
     );
@@ -105,10 +80,10 @@ export function MarketplaceScreen() {
   if (error) {
     return (
       <View style={styles.root}>
-        <HeaderBar insets={insets} count={0} />
+        <HeaderBar insets={insets} rawSearch="" setRawSearch={() => {}} setSearch={() => {}} />
         <View style={styles.errorBox}>
           <View style={styles.emptyCircle}>
-            <Ionicons name="cloud-offline-outline" size={32} color={colors.textTertiary} />
+            <Ionicons name="cube-outline" size={32} color={colors.textTertiary} />
           </View>
           <Text style={styles.errorTitle}>Connection issue</Text>
           <Text style={styles.errorDesc}>{error}</Text>
@@ -123,41 +98,41 @@ export function MarketplaceScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" />
-      <HeaderBar insets={insets} count={products.length} />
-
-      <View style={styles.searchWrap}>
-        <View style={styles.searchRow}>
-          <Ionicons name="search" size={18} color={colors.textTertiary} />
-          <TextInput
-            style={styles.searchField}
-            placeholder="Search materials..."
-            placeholderTextColor={colors.textTertiary}
-            value={rawSearch}
-            onChangeText={(t) => { setRawSearch(t); setSearch(t); }}
-            autoCorrect={false}
-            returnKeyType="search"
-          />
-          {rawSearch.length > 0 && (
-            <TouchableOpacity onPress={() => { setRawSearch(''); setSearch(''); }}>
-              <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
-            </TouchableOpacity>
-          )}
-          <View style={styles.searchDivider} />
-          <TouchableOpacity>
-            <Ionicons name="options-outline" size={20} color={colors.primary} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <StatusBar barStyle="light-content" backgroundColor="#1565C0" />
+      <HeaderBar insets={insets} rawSearch={rawSearch} setRawSearch={setRawSearch} setSearch={setSearch} />
 
       <CategoryFilter activeCategory={activeCategory} onCategoryChange={setCategory} />
+
+      <View style={styles.resultsBar}>
+        <View>
+          <Text style={styles.resultsTitle}>
+            {searchQuery.trim() ? `"${searchQuery}"` : getCategoryLabel(activeCategory)}
+          </Text>
+          <Text style={styles.resultsCount}>
+            {products.length} {t('common.material', { count: products.length })}
+          </Text>
+        </View>
+        <View style={styles.sortRow}>
+          {SORT_OPTIONS.map((o) => (
+            <TouchableOpacity
+              key={o.key}
+              activeOpacity={0.7}
+              onPress={() => handleSort(o.key)}
+              style={[styles.sortPill, sortBy === o.key && styles.sortPillActive]}
+            >
+              <Text style={[styles.sortPillText, sortBy === o.key && styles.sortPillTextActive]}>
+                {t('market.sort.' + o.key)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
 
       <FlatList
         data={products}
         keyExtractor={(p: Product) => p.id}
         numColumns={2}
         columnWrapperStyle={styles.col}
-        ListHeaderComponent={listHeader}
         ListEmptyComponent={empty}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
@@ -165,31 +140,56 @@ export function MarketplaceScreen() {
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={refresh} tintColor={colors.white} colors={[colors.white]} />
         }
-        renderItem={({ item, index }) => <ProductCard product={item} index={index} />}
+        renderItem={({ item, index }) => <ProductCard product={item} index={index} onPress={() => router.push(`/marketplace/${item.id}`)} />}
       />
     </View>
   );
 }
 
-function HeaderBar({ insets, count }: { insets: any; count: number }) {
+function HeaderBar({ insets, rawSearch, setRawSearch, setSearch }: { insets: any; rawSearch: string; setRawSearch: (t: string) => void; setSearch: (t: string) => void }) {
+  const { t } = useTranslation();
   return (
     <LinearGradient
-      colors={['#1E3A8A', '#3B82F6']}
+      colors={['#1565C0', '#1E88E5']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
     >
       <View style={[styles.headerContainer, { paddingTop: insets.top + spacing.md }]}>
         <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.headerGreeting}>Marketplace</Text>
-            <View style={styles.headerSubRow}>
-              <View style={styles.headerDot} />
-              <Text style={styles.headerSub}>Browse recyclable materials</Text>
+          <View>
+            <View style={styles.headerTitleRow}>
+              <View style={styles.headerIconWrap}>
+                <Ionicons name="storefront" size={18} color="#FFFFFF" />
+              </View>
+              <Text style={styles.headerGreeting}>{t('market.title')}</Text>
             </View>
+            <Text style={styles.headerSub}>{t('market.subtitle')}</Text>
           </View>
           <TouchableOpacity style={styles.headerBtn}>
-            <Ionicons name="notifications-outline" size={22} color={colors.white} />
+            <Ionicons name="notifications-outline" size={22} color="rgba(255,255,255,0.9)" />
             <View style={styles.headerBadge} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.searchRow}>
+          <Ionicons name="search" size={18} color="#94A3B8" />
+          <TextInput
+            style={styles.searchField}
+            placeholder={t('market.search')}
+            placeholderTextColor="#94A3B8"
+            value={rawSearch}
+            onChangeText={(t) => { setRawSearch(t); setSearch(t); }}
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+          {rawSearch.length > 0 && (
+            <TouchableOpacity onPress={() => { setRawSearch(''); setSearch(''); }}>
+              <Ionicons name="close-circle" size={20} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
+          <View style={styles.searchDivider} />
+          <TouchableOpacity>
+            <Ionicons name="options-outline" size={20} color="#1565C0" />
           </TouchableOpacity>
         </View>
       </View>
@@ -200,59 +200,80 @@ function HeaderBar({ insets, count }: { insets: any; count: number }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
 
-  headerContainer: { paddingBottom: spacing.xxl, paddingHorizontal: spacing.xl },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerLeft: { gap: 3 },
-  headerGreeting: { fontSize: 26, fontWeight: '800', color: colors.white, letterSpacing: -0.5 },
-  headerSubRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  headerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#34D399' },
-  headerSub: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
+  headerContainer: { paddingBottom: spacing.lg, paddingHorizontal: spacing.xl },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerIconWrap: {
+    width: 32, height: 32, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  headerGreeting: { fontSize: 24, fontWeight: '800', color: colors.white, letterSpacing: -0.5 },
+  headerSub: { fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.7)', marginTop: 2, marginLeft: 42 },
   headerBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   headerBadge: { position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' },
 
-  searchWrap: {
-    marginHorizontal: spacing.xl,
-    marginTop: -16,
-    marginBottom: spacing.xs,
-    ...shadows.lg,
-    borderRadius: radius.lg,
-  },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     paddingHorizontal: spacing.lg,
-    height: 50,
+    height: 48,
     gap: spacing.sm,
+    marginTop: spacing.md,
   },
-  searchField: { flex: 1, ...typography.body, paddingVertical: 0 },
+  searchField: { flex: 1, fontSize: 14, fontWeight: '500', color: '#0F172A', paddingVertical: 0 },
   searchDivider: { width: 1, height: 24, backgroundColor: colors.border },
 
-  list: { paddingBottom: 100, paddingHorizontal: spacing.xl, gap: spacing.md },
-  col: { gap: spacing.md },
-  listHeaderInner: {},
+  list: { paddingBottom: 100, paddingHorizontal: spacing.xl },
+  col: { justifyContent: 'space-between' },
 
   resultsBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  resultsTitle: { ...typography.h3 },
-  resultsCount: { ...typography.caption, marginTop: 1 },
-  sortRow: { flexDirection: 'row', gap: 4 },
-  sortPill: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 5,
-    borderRadius: radius.sm,
+  resultsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    letterSpacing: -0.3,
+  },
+  resultsCount: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  sortRow: {
+    flexDirection: 'row',
     backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: 3,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  sortPillActive: { backgroundColor: colors.primaryLight, borderColor: colors.primaryBorder },
-  sortPillText: { fontSize: 10, fontWeight: '700', color: colors.textTertiary },
-  sortPillTextActive: { color: colors.primary },
+  sortPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.sm,
+  },
+  sortPillActive: {
+    backgroundColor: '#1565C0',
+    shadowColor: '#1565C0',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sortPillText: { fontSize: 11, fontWeight: '600', color: colors.textTertiary },
+  sortPillTextActive: { color: colors.white },
 
   emptyState: { alignItems: 'center', paddingVertical: 56, gap: spacing.sm },
   emptyCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, marginBottom: spacing.xs },
@@ -270,6 +291,6 @@ const styles = StyleSheet.create({
   errorBox: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: spacing.sm },
   errorTitle: { ...typography.body, fontWeight: '700' },
   errorDesc: { ...typography.caption, textAlign: 'center', lineHeight: 18 },
-  retryBtn: { flexDirection: 'row', backgroundColor: colors.primary, paddingHorizontal: spacing.xxl, height: 46, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', marginTop: spacing.md },
+  retryBtn: { flexDirection: 'row', backgroundColor: '#1565C0', paddingHorizontal: spacing.xxl, height: 46, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', marginTop: spacing.md },
   retryText: { fontSize: 14, fontWeight: '700', color: colors.white },
 });

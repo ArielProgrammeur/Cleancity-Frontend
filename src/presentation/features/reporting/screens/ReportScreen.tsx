@@ -10,9 +10,13 @@ import {
   ScrollView,
   ActivityIndicator,
   Animated,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { ImagePicker } from '../components/ImagePicker';
 import { CategorySelector } from '../components/CategorySelector';
 import type { ReportCategory } from '../data/categories';
@@ -28,6 +32,7 @@ const sections = [
 ] as const;
 
 export function ReportScreen() {
+  const insets = useSafeAreaInsets();
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [description, setDescription] = useState('');
@@ -67,6 +72,7 @@ export function ReportScreen() {
   };
 
   const descRemaining = MAX_DESC_LENGTH - description.length;
+  const { t } = useTranslation();
 
   return (
     <KeyboardAvoidingView
@@ -74,52 +80,67 @@ export function ReportScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <Animated.View style={[styles.container, { opacity: contentOpacity }]}>
-        <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
-          </TouchableOpacity>
-
-          <View style={styles.topBarCenter}>
-            <Text style={styles.topBarTitle}>New Report</Text>
-            <Text style={styles.topBarSub}>
-              {completedCount}/3 completed
-            </Text>
+        <LinearGradient
+          colors={['#C62828', '#E53935']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <StatusBar barStyle="light-content" backgroundColor="#C62828" />
+          <View style={[styles.headerContainer, { paddingTop: insets.top + spacing.md }]}>
+            <View style={styles.headerRow}>
+              <View style={styles.headerTitleRow}>
+                <View style={styles.headerIconWrap}>
+                  <Ionicons name="trash-bin" size={18} color="#C62828" />
+                </View>
+                <View>
+                  <Text style={styles.headerTitle}>{t('report.heading')}</Text>
+                  <Text style={styles.headerSub}>{t('report.subheading')}</Text>
+                </View>
+              </View>
+              <View style={styles.stepsWrap}>
+                {[0, 1, 2].map((i) => (
+                  <View key={i} style={styles.stepRow}>
+                    {i > 0 && (
+                      <View style={[styles.stepLine, i <= completedCount && styles.stepLineDone]} />
+                    )}
+                    <View
+                      style={[
+                        styles.stepDot,
+                        i < completedCount && styles.stepDotDone,
+                        i === completedCount && styles.stepDotCurrent,
+                      ]}
+                    >
+                      {i < completedCount ? (
+                        <Ionicons name="checkmark" size={10} color="#C62828" />
+                      ) : (
+                        <Text style={[styles.stepDotNum, i === completedCount && styles.stepDotNumCurrent]}>
+                          {i + 1}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
           </View>
-
-          <View style={styles.stepIndicator}>
-            {sections.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.stepDot,
-                  i < completedCount && styles.stepDotDone,
-                  i === completedCount && completedCount < 3 && styles.stepDotCurrent,
-                ]}
-              />
-            ))}
-          </View>
-        </View>
+        </LinearGradient>
 
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.heading}>Report Waste</Text>
-          <Text style={styles.subheading}>
-            Help us keep the city clean. Fill in the details below.
-          </Text>
 
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionIcon}>
-                <Ionicons name="camera-outline" size={18} color={colors.primary} />
+                <Ionicons name="camera-outline" size={18} color={'#C62828'} />
               </View>
               <Text style={styles.sectionTitle}>Photo</Text>
               {imageUri && (
                 <TouchableOpacity onPress={handleRemoveImage} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <View style={styles.retakeChip}>
-                    <Ionicons name="refresh-outline" size={14} color={colors.primary} />
+                    <Ionicons name="refresh-outline" size={14} color={'#C62828'} />
                     <Text style={styles.retakeText}>Retake</Text>
                   </View>
                 </TouchableOpacity>
@@ -131,7 +152,7 @@ export function ReportScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionIcon}>
-                <Ionicons name="layers-outline" size={18} color={colors.primary} />
+                <Ionicons name="layers-outline" size={18} color={'#C62828'} />
               </View>
               <Text style={styles.sectionTitle}>Category</Text>
             </View>
@@ -141,7 +162,7 @@ export function ReportScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionIcon}>
-                <Ionicons name="document-text-outline" size={18} color={colors.primary} />
+                <Ionicons name="document-text-outline" size={18} color={'#C62828'} />
               </View>
               <Text style={styles.sectionTitle}>Description</Text>
               <Text style={[styles.charCount, descRemaining < 20 && styles.charCountWarn]}>
@@ -167,7 +188,7 @@ export function ReportScreen() {
 
           <View style={styles.locationCard}>
             <View style={styles.locationDot}>
-              <Ionicons name="locate" size={18} color={colors.primary} />
+              <Ionicons name="locate" size={18} color={'#C62828'} />
             </View>
             <View style={styles.locationBody}>
               <Text style={styles.locationLabel}>Location</Text>
@@ -220,75 +241,85 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  topBar: {
+  headerContainer: {
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.xl,
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: spacing.md,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F1F3',
+    justifyContent: 'space-between',
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  topBarCenter: {
-    flex: 1,
-    marginLeft: spacing.md,
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.4,
   },
-  topBarTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    letterSpacing: -0.2,
-  },
-  topBarSub: {
-    fontSize: 12,
-    color: colors.textSecondary,
+  headerSub: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.65)',
     marginTop: 1,
   },
-  stepIndicator: {
+  stepsWrap: {
     flexDirection: 'row',
-    gap: 6,
+    alignItems: 'center',
+    gap: 0,
+  },
+  stepRow: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
+  stepLine: {
+    width: 16,
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  stepLineDone: {
+    backgroundColor: '#FFFFFF',
+  },
   stepDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#E5E7EB',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   stepDotDone: {
-    backgroundColor: colors.primary,
-    width: 20,
+    backgroundColor: '#FFFFFF',
   },
   stepDotCurrent: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  stepDotNum: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.5)',
+  },
+  stepDotNumCurrent: {
+    color: '#FFFFFF',
   },
 
   scroll: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xl,
     paddingBottom: spacing.xxxl,
-  },
-  heading: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    letterSpacing: -0.5,
-  },
-  subheading: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    marginTop: spacing.xs,
-    marginBottom: spacing.xl,
   },
 
   section: {
@@ -303,7 +334,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#FFEBEE',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -317,7 +348,7 @@ const styles = StyleSheet.create({
   retakeChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#FFEBEE',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
@@ -326,7 +357,7 @@ const styles = StyleSheet.create({
   retakeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.primary,
+    color: '#C62828',
   },
 
   textArea: {
@@ -343,8 +374,8 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   textAreaFocused: {
-    borderColor: colors.primary,
-    backgroundColor: '#FAFFFB',
+    borderColor: '#C62828',
+    backgroundColor: '#FFF5F5',
   },
   textAreaWarn: {
     borderColor: '#FCA5A5',
@@ -376,7 +407,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#FFEBEE',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -398,7 +429,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#D1FAE5',
+    backgroundColor: '#FFCDD2',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -429,11 +460,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: colors.primary,
+    backgroundColor: '#C62828',
     paddingHorizontal: 24,
     height: 48,
     borderRadius: 14,
-    shadowColor: colors.primary,
+    shadowColor: '#C62828',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

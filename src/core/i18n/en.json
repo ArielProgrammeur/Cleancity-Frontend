@@ -1,0 +1,60 @@
+{
+  "common": {
+    "appName": "CleanCity",
+    "cancel": "Cancel",
+    "save": "Save",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Try Again",
+    "material": "material",
+    "material_plural": "materials"
+  },
+  "profile": {
+    "title": "Profile",
+    "edit": "Edit Profile",
+    "settings": "Settings",
+    "language": "Language",
+    "notifications": "Notifications",
+    "privacy": "Privacy",
+    "theme": "Theme",
+    "about": "About"
+  },
+  "language": {
+    "title": "Language",
+    "select": "Select your preferred language",
+    "en": "English",
+    "fr": "Français",
+    "es": "Español",
+    "de": "Deutsch",
+    "it": "Italiano",
+    "pt": "Português",
+    "ar": "العربية",
+    "zh": "中文"
+  },
+  "market": {
+    "title": "Marketplace",
+    "subtitle": "Buy & sell recyclable materials",
+    "search": "Search materials...",
+    "sort": {
+      "price-asc": "Low Price",
+      "price-desc": "High Price",
+      "co2": "Eco Impact",
+      "name": "A-Z"
+    }
+  },
+  "rewards": {
+    "title": "Rewards",
+    "search": "Search rewards..."
+  },
+  "report": {
+    "title": "New Report",
+    "heading": "Report Waste",
+    "subheading": "Help us keep the city clean"
+  },
+  "onboarding": {
+    "skip": "Skip",
+    "next": "Next",
+    "getStarted": "Get Started"
+  }
+}
