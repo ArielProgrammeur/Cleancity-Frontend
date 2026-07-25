@@ -1,42 +1,47 @@
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../../core/theme/colors';
 import { spacing, borderRadius } from '../../../core/theme/spacing';
+import { NotificationApiDatasource } from '../../../data/datasources/NotificationApiDatasource';
+import { useNotifications } from '../../shared/hooks/useNotifications';
 
-interface Notification {
-  id: string; title: string; body: string; time: string; read: boolean;
-  icon: keyof typeof Ionicons.glyphMap; color: string; bgColor: string;
-}
-
-const NOTIFICATIONS: Notification[] = [
-  { id: 'n1', title: 'Report Approved', body: 'Your report "Plastic bottle near park" has been approved.', time: '2h ago', read: false, icon: 'checkmark-circle', color: colors.success, bgColor: '#ECFDF5' },
-  { id: 'n2', title: 'Reward Claimed', body: 'Your Eco Tote Bag reward is being processed.', time: '5h ago', read: false, icon: 'gift', color: colors.secondary, bgColor: '#FFFBEB' },
-  { id: 'n3', title: 'Collection Reminder', body: 'Waste collection tomorrow at 08:00 on your street.', time: '1d ago', read: true, icon: 'calendar', color: colors.info, bgColor: '#EFF6FF' },
-  { id: 'n4', title: 'New Badge Earned', body: 'Congratulations! You earned "Eco Warrior" badge!', time: '2d ago', read: true, icon: 'shield-checkmark', color: '#059669', bgColor: '#F0FDF4' },
-  { id: 'n5', title: 'Points Earned', body: 'You earned 50 points for your recent waste report.', time: '3d ago', read: true, icon: 'star', color: colors.secondary, bgColor: '#FFFBEB' },
-  { id: 'n6', title: 'Marketplace Listing Sold', body: 'Your PET plastic listing has been sold.', time: '5d ago', read: true, icon: 'storefront', color: '#7C3AED', bgColor: '#F5F3FF' },
-  { id: 'n7', title: 'Level Up!', body: 'You reached "Eco Warrior" level. Keep it up!', time: '1w ago', read: true, icon: 'trending-up', color: colors.primary, bgColor: '#F0FDF4' },
-];
+const datasource = new NotificationApiDatasource();
 
 export default function NotificationsScreen() {
+  const { t } = useTranslation();
+  const { notifications, isLoading, error, markAsRead } = useNotifications(datasource);
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <Stack.Screen options={{ title: t('notifications.title'), headerTintColor: colors.primary }} />
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Notifications', headerTintColor: colors.primary }} />
+      <Stack.Screen options={{ title: t('notifications.title'), headerTintColor: colors.primary }} />
       <FlatList
-        data={NOTIFICATIONS}
+        data={notifications}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={() => (
           <View style={styles.empty}>
             <Ionicons name="notifications-off-outline" size={48} color={colors.divider} />
-            <Text style={styles.emptyTitle}>No notifications</Text>
-            <Text style={styles.emptyBody}>You are all caught up!</Text>
+            <Text style={styles.emptyTitle}>{t('notifications.empty')}</Text>
+            <Text style={styles.emptyBody}>{t('notifications.allCaughtUp')}</Text>
           </View>
         )}
         renderItem={({ item }) => (
-          <TouchableOpacity style={[styles.card, !item.read && styles.cardUnread]}>
+          <TouchableOpacity
+            style={[styles.card, !item.read && styles.cardUnread]}
+            onPress={() => markAsRead(item.id)}
+          >
             <View style={[styles.iconCircle, { backgroundColor: item.bgColor }]}>
               <Ionicons name={item.icon} size={22} color={item.color} />
             </View>

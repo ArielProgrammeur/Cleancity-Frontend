@@ -1,135 +1,274 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { Stack } from 'expo-router';
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../../core/theme/colors';
 import { spacing, borderRadius } from '../../../core/theme/spacing';
+import { api } from '../../../core/api/api';
 
-interface DayRoute {
-  day: string; date: string; active: boolean;
-  routes: { id: string; name: string; time: string; waypoints: number; color: string }[];
+interface CollectionRoute {
+  id: string;
+  name: string;
+  description: string;
+  day_of_week: number;
+  time: string;
+  waypoints: Waypoint[];
 }
 
-const SCHEDULE: DayRoute[] = [
-  { day: 'Mon', date: 'June 15', active: false, routes: [] },
-  { day: 'Tue', date: 'June 16', active: false, routes: [] },
-  { day: 'Wed', date: 'June 17', active: true, routes: [
-    { id: 'w1', name: 'Sector A - Downtown', time: '08:00 - 10:00', waypoints: 12, color: '#2563EB' },
-    { id: 'w2', name: 'Sector B - Riverside', time: '10:30 - 12:00', waypoints: 8, color: '#059669' },
-  ]},
-  { day: 'Thu', date: 'June 18', active: false, routes: [
-    { id: 'th1', name: 'Sector C - Industrial', time: '09:00 - 11:00', waypoints: 15, color: '#7C3AED' },
-  ]},
-  { day: 'Fri', date: 'June 19', active: false, routes: [] },
-  { day: 'Sat', date: 'June 20', active: false, routes: [
-    { id: 'sa1', name: 'Sector D - Market Area', time: '07:00 - 09:00', waypoints: 6, color: '#D97706' },
-  ]},
-  { day: 'Sun', date: 'June 21', active: false, routes: [] },
-];
+interface Waypoint {
+  latitude: number;
+  longitude: number;
+  address: string;
+  order: number;
+}
+
+interface OptimizedRoute {
+  id: string;
+  zone: string;
+  optimized_distance_km: number;
+  original_distance_km: number;
+  reduction_percent: number;
+  waypoints: OptimizedWaypoint[];
+  created_at: string;
+  day_of_week: number;
+  estimated_duration_min: number;
+}
+
+interface OptimizedWaypoint {
+  report_id: string;
+  latitude: number;
+  longitude: number;
+  address: string;
+  order: number;
+  waste_type: string;
+}
+
+const DAYS_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 
 export default function CollectionScheduleScreen() {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const [routes, setRoutes] = useState<CollectionRoute[]>([]);
+  const [optimizedRoutes, setOptimizedRoutes] = useState<OptimizedRoute[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchData = async () => {
+    try {
+      const [routesData, optimizedData] = await Promise.all([
+        api.get<CollectionRoute[]>('/api/routes/optimizations?limit=5').catch(() => []),
+        api.get<OptimizedRoute[]>('/api/routes/optimizations?limit=10').catch(() => []),
+      ]);
+      setRoutes(routesData);
+      setOptimizedRoutes(optimizedData);
+    } catch (err) {
+      console.error('Erreur chargement planning:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchData();
+  };
+
+  const today = new Date().getDay();
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Stack.Screen options={{ title: 'Planning de collecte', headerTintColor: colors.primary }} />
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Collection Schedule', headerTintColor: colors.primary }} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        <View style={styles.weekHeader}>
-          {SCHEDULE.map((d) => (
-            <View key={d.day} style={[styles.dayCol, d.active && styles.dayColActive]}>
-              <Text style={[styles.dayName, d.active && styles.dayTextActive]}>{d.day}</Text>
-              <Text style={[styles.dayDate, d.active && styles.dayTextActive]}>{d.date.split(' ')[1]}</Text>
-              {d.active && <View style={styles.activeDot} />}
-            </View>
-          ))}
+      <Stack.Screen options={{ title: 'Planning de collecte', headerTintColor: colors.primary }} />
+
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.todayCard}>
+          <View style={styles.todayHeader}>
+            <Ionicons name="today" size={20} color={colors.primary} />
+            <Text style={styles.todayTitle}>Aujourd'hui</Text>
+          </View>
+          <Text style={styles.todayDay}>{DAYS_FR[today]}</Text>
+          <Text style={styles.todayDate}>
+            {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </Text>
         </View>
 
-        <View style={styles.todaySection}>
-          <View style={styles.todayHeader}>
-            <Ionicons name="calendar" size={20} color={colors.primary} />
-            <Text style={styles.todayTitle}>Wednesday, June 17</Text>
-            <View style={styles.todayBadge}>
-              <Text style={styles.todayBadgeText}>Today</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Routes optimisées par l'IA</Text>
+          {optimizedRoutes.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="git-network-outline" size={40} color={colors.border} />
+              <Text style={styles.emptyText}>Aucune route optimisée</Text>
+              <TouchableOpacity
+                style={styles.optimizeButton}
+                onPress={() => router.push('/(tabs)/admin' as any)}
+              >
+                <Ionicons name="sparkles" size={16} color={colors.primary} />
+                <Text style={styles.optimizeButtonText}>Optimiser les routes</Text>
+              </TouchableOpacity>
             </View>
-          </View>
-
-          {SCHEDULE[2].routes.map((route) => (
-            <TouchableOpacity key={route.id} style={styles.routeCard}>
-              <View style={[styles.routeColor, { backgroundColor: route.color }]} />
-              <View style={styles.routeContent}>
-                <Text style={styles.routeName}>{route.name}</Text>
-                <View style={styles.routeMeta}>
-                  <View style={styles.metaItem}>
-                    <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-                    <Text style={styles.metaText}>{route.time}</Text>
+          ) : (
+            optimizedRoutes.map((route) => (
+              <View key={route.id} style={styles.routeCard}>
+                <View style={styles.routeHeader}>
+                  <View style={styles.routeZone}>
+                    <Ionicons name="location" size={14} color={colors.primary} />
+                    <Text style={styles.routeZoneName}>{route.zone}</Text>
                   </View>
-                  <View style={styles.metaItem}>
-                    <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-                    <Text style={styles.metaText}>{route.waypoints} stops</Text>
+                  <View style={styles.reductionBadge}>
+                    <Text style={styles.reductionText}>-{route.reduction_percent.toFixed(0)}%</Text>
                   </View>
                 </View>
+
+                <View style={styles.routeStats}>
+                  <View style={styles.routeStat}>
+                    <Text style={styles.routeStatValue}>{route.optimized_distance_km.toFixed(1)} km</Text>
+                    <Text style={styles.routeStatLabel}>Distance optimisée</Text>
+                  </View>
+                  <View style={styles.routeStat}>
+                    <Text style={styles.routeStatValue}>{route.original_distance_km.toFixed(1)} km</Text>
+                    <Text style={styles.routeStatLabel}>Distance originale</Text>
+                  </View>
+                  <View style={styles.routeStat}>
+                    <Text style={styles.routeStatValue}>{route.estimated_duration_min.toFixed(0)} min</Text>
+                    <Text style={styles.routeStatLabel}>Durée estimée</Text>
+                  </View>
+                </View>
+
+                <View style={styles.waypointsList}>
+                  {route.waypoints.slice(0, 5).map((wp, idx) => (
+                    <View key={wp.report_id || idx} style={styles.waypointItem}>
+                      <View style={[styles.waypointNumber, { backgroundColor: colors.primary }]}>
+                        <Text style={styles.waypointNumberText}>{wp.order}</Text>
+                      </View>
+                      <Text style={styles.waypointAddress} numberOfLines={1}>
+                        {wp.address || `Point ${wp.order}`}
+                      </Text>
+                      <View style={[styles.wasteTypeBadge, { backgroundColor: getWasteColor(wp.waste_type) + '20' }]}>
+                        <Text style={[styles.wasteTypeText, { color: getWasteColor(wp.waste_type) }]}>
+                          {wp.waste_type}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                  {route.waypoints.length > 5 && (
+                    <Text style={styles.moreWaypoints}>
+                      +{route.waypoints.length - 5} autres points
+                    </Text>
+                  )}
+                </View>
+
+                <Text style={styles.routeDate}>
+                  {new Date(route.created_at).toLocaleDateString('fr-FR')}
+                </Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.divider} />
-            </TouchableOpacity>
-          ))}
+            ))
+          )}
         </View>
 
-        <View style={styles.weekOverview}>
-          <Text style={styles.sectionTitle}>This Week</Text>
-          {SCHEDULE.filter((d) => d.routes.length > 0 && d.day !== 'Wed').map((d) => (
-            <TouchableOpacity key={d.day} style={styles.dayRouteCard}>
-              <View style={styles.dayRouteLeft}>
-                <Text style={styles.dayRouteDay}>{d.day}</Text>
-                <Text style={styles.dayRouteDate}>{d.date}</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Horaires habituels</Text>
+          <View style={styles.scheduleGrid}>
+            {DAYS_FR.map((day, idx) => (
+              <View key={day} style={[styles.scheduleDay, idx === today && styles.scheduleDayActive]}>
+                <Text style={[styles.scheduleDayName, idx === today && styles.scheduleDayNameActive]}>
+                  {day.slice(0, 3)}
+                </Text>
+                <Ionicons
+                  name={idx === today ? "checkmark-circle" : "time-outline"}
+                  size={16}
+                  color={idx === today ? colors.primary : colors.textSecondary}
+                />
               </View>
-              <View style={styles.dayRouteRight}>
-                <Text style={styles.dayRouteCount}>{d.routes.length} route{d.routes.length > 1 ? 's' : ''}</Text>
-                <Text style={styles.dayRouteTime}>{d.routes[0].time}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.divider} />
-            </TouchableOpacity>
-          ))}
+            ))}
+          </View>
         </View>
 
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle" size={20} color={colors.info} />
-          <Text style={styles.infoText}>
-            Collection times may vary. Place your waste out by 07:00 on collection day.
-          </Text>
+        <View style={styles.infoSection}>
+          <View style={styles.infoCard}>
+            <Ionicons name="bulb" size={20} color={colors.warning} />
+            <View style={styles.infoContent}>
+              <Text style={styles.infoTitle}>Optimisation IA</Text>
+              <Text style={styles.infoText}>
+                Les routes sont calculées par un algorithme génétique qui réduit les distances de collecte de 30%.
+              </Text>
+            </View>
+          </View>
         </View>
       </ScrollView>
     </View>
   );
 }
 
+function getWasteColor(type: string): string {
+  const colors: Record<string, string> = {
+    organique: '#84CC16',
+    plastique: '#3B82F6',
+    verre: '#10B981',
+    metal: '#6366F1',
+    papier: '#F59E0B',
+    electronique: '#8B5CF6',
+  };
+  return colors[type] || '#6B7280';
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  scroll: { paddingBottom: spacing.xxl },
-  weekHeader: { flexDirection: 'row', backgroundColor: colors.surface, paddingVertical: spacing.md, paddingHorizontal: spacing.sm, marginHorizontal: spacing.md, marginTop: spacing.md, borderRadius: borderRadius.lg, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4 },
-  dayCol: { flex: 1, alignItems: 'center', paddingVertical: spacing.xs, gap: 2 },
-  dayColActive: { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: spacing.xs + 2 },
-  dayName: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
-  dayTextActive: { color: colors.white },
-  dayDate: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
-  activeDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.white, marginTop: 2 },
-  todaySection: { marginTop: spacing.lg, marginHorizontal: spacing.md },
-  todayHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, gap: spacing.sm },
-  todayTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, flex: 1 },
-  todayBadge: { backgroundColor: '#ECFDF5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: borderRadius.md },
-  todayBadgeText: { fontSize: 12, fontWeight: '700', color: colors.success },
-  routeCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: borderRadius.lg, marginBottom: spacing.sm, overflow: 'hidden', elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4 },
-  routeColor: { width: 4, height: '100%' },
-  routeContent: { flex: 1, padding: spacing.md },
-  routeName: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
-  routeMeta: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { fontSize: 12, color: colors.textSecondary },
-  weekOverview: { marginTop: spacing.lg, marginHorizontal: spacing.md },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.sm },
-  dayRouteCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, padding: spacing.md, borderRadius: borderRadius.lg, marginBottom: spacing.sm, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4 },
-  dayRouteLeft: { alignItems: 'center', marginRight: spacing.md, width: 50 },
-  dayRouteDay: { fontSize: 16, fontWeight: '800', color: colors.textPrimary },
-  dayRouteDate: { fontSize: 11, color: colors.textSecondary },
-  dayRouteRight: { flex: 1 },
-  dayRouteCount: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
-  dayRouteTime: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
-  infoCard: { flexDirection: 'row', backgroundColor: '#EFF6FF', padding: spacing.md, borderRadius: borderRadius.lg, marginTop: spacing.lg, marginHorizontal: spacing.md, gap: spacing.sm, alignItems: 'flex-start' },
-  infoText: { fontSize: 13, color: colors.info, lineHeight: 18, flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
+  todayCard: { backgroundColor: colors.primary, margin: spacing.md, padding: spacing.lg, borderRadius: borderRadius.lg },
+  todayHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  todayTitle: { fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
+  todayDay: { fontSize: 24, fontWeight: '700', color: colors.white },
+  todayDate: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: spacing.xs },
+  section: { paddingHorizontal: spacing.md, marginBottom: spacing.lg },
+  sectionTitle: { fontSize: 16, fontWeight: '600', color: colors.textPrimary, marginBottom: spacing.md },
+  emptyState: { alignItems: 'center', paddingVertical: spacing.xxl, backgroundColor: colors.white, borderRadius: borderRadius.lg },
+  emptyText: { marginTop: spacing.sm, fontSize: 14, color: colors.textSecondary },
+  optimizeButton: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.primary + '10', borderRadius: borderRadius.full, gap: spacing.xs },
+  optimizeButtonText: { fontSize: 13, color: colors.primary, fontWeight: '500' },
+  routeCard: { backgroundColor: colors.white, borderRadius: borderRadius.lg, padding: spacing.md, marginBottom: spacing.sm, elevation: 1 },
+  routeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  routeZone: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  routeZoneName: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
+  reductionBadge: { backgroundColor: colors.success + '20', paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: borderRadius.full },
+  reductionText: { fontSize: 12, fontWeight: '600', color: colors.success },
+  routeStats: { flexDirection: 'row', marginBottom: spacing.md, paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  routeStat: { flex: 1, alignItems: 'center' },
+  routeStatValue: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  routeStatLabel: { fontSize: 10, color: colors.textSecondary, marginTop: 2 },
+  waypointsList: { marginBottom: spacing.sm },
+  waypointItem: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, gap: spacing.sm },
+  waypointNumber: { width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  waypointNumberText: { fontSize: 10, color: colors.white, fontWeight: '600' },
+  waypointAddress: { flex: 1, fontSize: 13, color: colors.textSecondary },
+  wasteTypeBadge: { paddingHorizontal: spacing.xs, paddingVertical: 1, borderRadius: borderRadius.sm },
+  wasteTypeText: { fontSize: 10, fontWeight: '500' },
+  moreWaypoints: { fontSize: 12, color: colors.textSecondary, textAlign: 'center', marginTop: spacing.xs },
+  routeDate: { fontSize: 11, color: colors.textSecondary, textAlign: 'right' },
+  scheduleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  scheduleDay: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.white, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.md, minWidth: '48%', flex: 1 },
+  scheduleDayActive: { backgroundColor: colors.primary + '10', borderWidth: 1, borderColor: colors.primary },
+  scheduleDayName: { fontSize: 13, color: colors.textSecondary },
+  scheduleDayNameActive: { color: colors.primary, fontWeight: '600' },
+  infoSection: { paddingHorizontal: spacing.md, paddingBottom: spacing.xxl },
+  infoCard: { flexDirection: 'row', backgroundColor: colors.warning + '10', padding: spacing.md, borderRadius: borderRadius.lg, gap: spacing.md },
+  infoContent: { flex: 1 },
+  infoTitle: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginBottom: spacing.xs },
+  infoText: { fontSize: 12, color: colors.textSecondary, lineHeight: 18 },
 });

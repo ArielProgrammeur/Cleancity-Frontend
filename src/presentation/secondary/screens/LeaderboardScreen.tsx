@@ -1,26 +1,18 @@
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../../core/theme/colors';
 import { spacing, borderRadius } from '../../../core/theme/spacing';
+import { useUser } from '../../../core/contexts/UserContext';
+import { api } from '../../../core/api/api';
 
 interface LeaderboardUser {
-  id: string; rank: number; name: string; points: number; reports: number;
-  avatarColor: string; isCurrentUser?: boolean;
+  id: string; rank: number; name: string; points: number; avatarColor: string; isCurrentUser?: boolean;
 }
 
-const LEADERBOARD: LeaderboardUser[] = [
-  { id: 'u1', rank: 1, name: 'Sophie M.', points: 8450, reports: 67, avatarColor: '#F59E0B' },
-  { id: 'u2', rank: 2, name: 'Lucas B.', points: 7200, reports: 54, avatarColor: '#9CA3AF' },
-  { id: 'u3', rank: 3, name: 'Emma R.', points: 6890, reports: 51, avatarColor: '#D97706' },
-  { id: 'u4', rank: 4, name: 'Hugo P.', points: 5430, reports: 38, avatarColor: '#2563EB' },
-  { id: 'u5', rank: 5, name: 'Ariel', points: 4150, reports: 12, avatarColor: colors.primary, isCurrentUser: true },
-  { id: 'u6', rank: 6, name: 'Camille D.', points: 3890, reports: 29, avatarColor: '#7C3AED' },
-  { id: 'u7', rank: 7, name: 'Nathan T.', points: 3200, reports: 23, avatarColor: '#DC2626' },
-  { id: 'u8', rank: 8, name: 'Léa J.', points: 2800, reports: 19, avatarColor: '#059669' },
-  { id: 'u9', rank: 9, name: 'Tom S.', points: 2100, reports: 15, avatarColor: '#D97706' },
-  { id: 'u10', rank: 10, name: 'Jade K.', points: 1500, reports: 8, avatarColor: '#0284C7' },
-];
+const AVATAR_COLORS = ['#F59E0B', '#9CA3AF', '#D97706', '#2563EB', '#7C3AED', '#DC2626', '#059669', '#0284C7'];
 
 function getMedal(rank: number): { icon: keyof typeof Ionicons.glyphMap; color: string } | null {
   if (rank === 1) return { icon: 'trophy', color: '#F59E0B' };
@@ -30,29 +22,85 @@ function getMedal(rank: number): { icon: keyof typeof Ionicons.glyphMap; color: 
 }
 
 export default function LeaderboardScreen() {
+  const { t } = useTranslation();
+  const { userId, userName, profile } = useUser();
+  const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${api.baseUrl}/api/leaderboard/`);
+        if (!res.ok) throw new Error(t('leaderboard.error'));
+        const data = await res.json();
+        if (!cancelled) {
+          const users: LeaderboardUser[] = data.map((u: any, i: number) => ({
+            id: u.id,
+            rank: i + 1,
+            name: u.name || t('leaderboard.user'),
+            points: u.points || 0,
+            avatarColor: AVATAR_COLORS[i % AVATAR_COLORS.length],
+            isCurrentUser: u.id === userId,
+          }));
+          setLeaderboard(users);
+        }
+      } catch {
+        if (!cancelled) setLeaderboard([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <Stack.Screen options={{ title: t('leaderboard.title') }} />
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (leaderboard.length === 0) {
+    return (
+      <View style={styles.center}>
+        <Stack.Screen options={{ title: t('leaderboard.title') }} />
+        <Ionicons name="trophy-outline" size={48} color={colors.textSecondary} />
+        <Text style={styles.emptyText}>{t('leaderboard.noParticipants')}</Text>
+      </View>
+    );
+  }
+
+  const top3 = leaderboard.slice(0, 3);
+  const rest = leaderboard.slice(3);
+
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Leaderboard', headerTintColor: colors.primary }} />
+      <Stack.Screen options={{ title: t('leaderboard.title'), headerTintColor: colors.primary }} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        <View style={styles.podium}>
-          {[1, 0, 2].map((idx) => {
-            const user = LEADERBOARD[idx];
-            const heights = [140, 180, 100];
-            return (
-              <View key={user.id} style={[styles.podiumItem, idx === 0 ? styles.podiumCenter : null]}>
-                <View style={[styles.podiumAvatar, { backgroundColor: user.avatarColor, borderColor: user.rank === 1 ? '#F59E0B' : 'transparent', borderWidth: user.rank === 1 ? 3 : 0 }]}>
-                  <Text style={styles.podiumAvatarText}>{user.name.charAt(0)}</Text>
+        {top3.length >= 3 && (
+          <View style={styles.podium}>
+            {[1, 0, 2].map((idx) => {
+              const user = top3[idx];
+              const heights = [140, 180, 100];
+              return (
+                <View key={user.id} style={[styles.podiumItem, idx === 0 ? styles.podiumCenter : null]}>
+                  <View style={[styles.podiumAvatar, { backgroundColor: user.avatarColor, borderColor: user.rank === 1 ? '#F59E0B' : 'transparent', borderWidth: user.rank === 1 ? 3 : 0 }]}>
+                    <Text style={styles.podiumAvatarText}>{user.name.charAt(0)}</Text>
+                  </View>
+                  <Text style={styles.podiumName}>{user.name.split(' ')[0]}</Text>
+                  <Text style={styles.podiumPoints}>{user.points.toLocaleString()} pts</Text>
+                  <View style={[styles.podiumBar, { height: heights[idx], backgroundColor: user.rank === 1 ? '#F59E0B' : user.rank === 2 ? '#9CA3AF' : '#D97706' }]} />
                 </View>
-                <Text style={styles.podiumName}>{user.name.split(' ')[0]}</Text>
-                <Text style={styles.podiumPoints}>{user.points.toLocaleString()} pts</Text>
-                <View style={[styles.podiumBar, { height: heights[idx], backgroundColor: user.rank === 1 ? '#F59E0B' : user.rank === 2 ? '#9CA3AF' : '#D97706' }]} />
-              </View>
-            );
-          })}
-        </View>
+              );
+            })}
+          </View>
+        )}
 
         <View style={styles.list}>
-          {LEADERBOARD.slice(3).map((user) => {
+          {(top3.length < 3 ? leaderboard : rest).map((user) => {
             const medal = getMedal(user.rank);
             return (
               <View key={user.id} style={[styles.row, user.isCurrentUser && styles.rowHighlight]}>
@@ -68,7 +116,6 @@ export default function LeaderboardScreen() {
                 </View>
                 <View style={styles.userInfo}>
                   <Text style={styles.userName}>{user.name}</Text>
-                  <Text style={styles.userReports}>{user.reports} reports</Text>
                 </View>
                 <View style={styles.pointsCol}>
                   <Text style={styles.pointsValue}>{user.points.toLocaleString()}</Text>
@@ -85,6 +132,8 @@ export default function LeaderboardScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background, gap: spacing.sm },
+  emptyText: { fontSize: 16, color: colors.textSecondary },
   scroll: { paddingBottom: spacing.xxl },
   podium: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-end', paddingTop: spacing.xl, paddingBottom: spacing.md, paddingHorizontal: spacing.md, backgroundColor: colors.surface, marginHorizontal: spacing.md, marginTop: spacing.md, borderRadius: borderRadius.xl, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 },
   podiumItem: { flex: 1, alignItems: 'center', gap: spacing.xs },
@@ -103,7 +152,6 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 16, fontWeight: '700', color: colors.white },
   userInfo: { flex: 1 },
   userName: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
-  userReports: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
   pointsCol: { flexDirection: 'row', alignItems: 'baseline', gap: 2 },
   pointsValue: { fontSize: 16, fontWeight: '800', color: colors.textPrimary },
   pointsLabel: { fontSize: 11, color: colors.textSecondary },

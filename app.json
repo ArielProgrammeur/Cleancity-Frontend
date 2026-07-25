@@ -16,7 +16,15 @@
     },
     "plugins": [
       "expo-router",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow CleanCity to access your location for waste report mapping.",
+          "locationAlwaysPermission": "Allow CleanCity to access your location for waste report mapping.",
+          "locationWhenInUsePermission": "Allow CleanCity to access your location for waste report mapping."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

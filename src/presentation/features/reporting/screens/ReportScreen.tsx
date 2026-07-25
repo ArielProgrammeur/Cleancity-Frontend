@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,17 +11,21 @@ import {
   ActivityIndicator,
   Animated,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import * as Location from 'expo-location';
 import { ImagePicker } from '../components/ImagePicker';
 import { CategorySelector } from '../components/CategorySelector';
 import type { ReportCategory } from '../data/categories';
 import { colors } from '../../../../core/theme/colors';
 import { spacing } from '../../../../core/theme/spacing';
+import { api } from '../../../../core/api/api';
+import { auth } from '../../../../core/firebase';
 
 const MAX_DESC_LENGTH = 280;
 
@@ -38,17 +42,40 @@ export function ReportScreen() {
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [location, setLocation] = useState<{ latitude: number; longitude: number; address: string } | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    (async () => {
+      setLocationLoading(true);
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          const [place] = await Location.reverseGeocodeAsync({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+          const addr = place ? `${place.name || ''} ${place.street || ''}, ${place.city || 'Douala'}` : 'Douala, Cameroun';
+          setLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude, address: addr.trim() });
+        } else {
+          setLocation({ latitude: 4.0511, longitude: 9.7679, address: 'Douala, Cameroun' });
+        }
+      } catch {
+        setLocation({ latitude: 4.0511, longitude: 9.7679, address: 'Douala, Cameroun' });
+      }
+      setLocationLoading(false);
+    })();
+  }, []);
 
   const contentOpacity = useRef(new Animated.Value(0)).current;
   const submitScale = useRef(new Animated.Value(1)).current;
 
-  useState(() => {
+  useEffect(() => {
     Animated.timing(contentOpacity, {
       toValue: 1,
       duration: 450,
       useNativeDriver: true,
     }).start();
-  });
+  }, []);
 
   const completedCount = [imageUri, selectedCategory, description.trim()].filter(Boolean).length;
 
@@ -58,21 +85,55 @@ export function ReportScreen() {
 
   const canSubmit = imageUri && selectedCategory && description.trim().length > 0;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) return;
     Animated.sequence([
       Animated.timing(submitScale, { toValue: 0.96, duration: 100, useNativeDriver: true }),
       Animated.timing(submitScale, { toValue: 1, duration: 100, useNativeDriver: true }),
     ]).start();
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      if (!auth?.currentUser) {
+        Alert.alert(t('common.error'), t('report.loginRequired'));
+        setIsSubmitting(false);
+        return;
+      }
+
+      const token = await auth.currentUser.getIdToken();
+
+      const formData = new FormData();
+      if (imageUri) {
+        const filename = imageUri.split('/').pop() || 'photo.jpg';
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : 'image/jpeg';
+        formData.append('file', { uri: imageUri, name: filename, type } as any);
+      }
+      formData.append('title', selectedCategory || t('report.signalisation'));
+      formData.append('description', description);
+      formData.append('category', selectedCategory || 'other');
+      formData.append('latitude', String(location?.latitude || 4.0511));
+      formData.append('longitude', String(location?.longitude || 9.7679));
+
+      const response = await fetch(`${api['baseUrl']}/api/reports/`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || t('report.serverError'));
+      }
+
+      Alert.alert(t('common.success'), t('report.success'));
       router.back();
-    }, 1500);
+    } catch (e) {
+      Alert.alert(t('common.error'), e instanceof Error ? e.message : t('report.submitError'));
+    }
+    setIsSubmitting(false);
   };
 
   const descRemaining = MAX_DESC_LENGTH - description.length;
-  const { t } = useTranslation();
 
   return (
     <KeyboardAvoidingView
@@ -136,12 +197,12 @@ export function ReportScreen() {
               <View style={styles.sectionIcon}>
                 <Ionicons name="camera-outline" size={18} color={'#C62828'} />
               </View>
-              <Text style={styles.sectionTitle}>Photo</Text>
+              <Text style={styles.sectionTitle}>{t('report.photo')}</Text>
               {imageUri && (
                 <TouchableOpacity onPress={handleRemoveImage} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <View style={styles.retakeChip}>
                     <Ionicons name="refresh-outline" size={14} color={'#C62828'} />
-                    <Text style={styles.retakeText}>Retake</Text>
+                    <Text style={styles.retakeText}>{t('report.retake')}</Text>
                   </View>
                 </TouchableOpacity>
               )}
@@ -154,7 +215,7 @@ export function ReportScreen() {
               <View style={styles.sectionIcon}>
                 <Ionicons name="layers-outline" size={18} color={'#C62828'} />
               </View>
-              <Text style={styles.sectionTitle}>Category</Text>
+              <Text style={styles.sectionTitle}>{t('report.category')}</Text>
             </View>
             <CategorySelector selected={selectedCategory} onSelect={handleSelectCategory} />
           </View>
@@ -164,7 +225,7 @@ export function ReportScreen() {
               <View style={styles.sectionIcon}>
                 <Ionicons name="document-text-outline" size={18} color={'#C62828'} />
               </View>
-              <Text style={styles.sectionTitle}>Description</Text>
+              <Text style={styles.sectionTitle}>{t('report.description')}</Text>
               <Text style={[styles.charCount, descRemaining < 20 && styles.charCountWarn]}>
                 {descRemaining}
               </Text>
@@ -175,10 +236,10 @@ export function ReportScreen() {
                 focusedField === 'desc' && styles.textAreaFocused,
                 descRemaining < 20 && styles.textAreaWarn,
               ]}
-              placeholder="Describe what you see..."
+              placeholder={t('report.descriptionPlaceholder')}
               placeholderTextColor="#9CA3AF"
               value={description}
-              onChangeText={(t) => setDescription(t.slice(0, MAX_DESC_LENGTH))}
+              onChangeText={(text) => setDescription(text.slice(0, MAX_DESC_LENGTH))}
               multiline
               textAlignVertical="top"
               onFocus={() => setFocusedField('desc')}
@@ -191,12 +252,19 @@ export function ReportScreen() {
               <Ionicons name="locate" size={18} color={'#C62828'} />
             </View>
             <View style={styles.locationBody}>
-              <Text style={styles.locationLabel}>Location</Text>
-              <Text style={styles.locationValue}>Auto-detected on submit</Text>
+              <Text style={styles.locationLabel}>{t('report.location')}</Text>
+              <Text style={styles.locationValue}>
+                {locationLoading ? t('report.detectionInProgress') : location?.address || t('report.notAvailable')}
+              </Text>
             </View>
-            <View style={styles.locationBadge}>
-              <Ionicons name="checkmark" size={16} color={colors.white} />
-            </View>
+            {location && !locationLoading && (
+              <View style={[styles.locationBadge, { backgroundColor: '#C8E6C9' }]}>
+                <Ionicons name="checkmark" size={16} color={'#2E7D32'} />
+              </View>
+            )}
+            {locationLoading && (
+              <ActivityIndicator size="small" color="#C62828" />
+            )}
           </View>
 
           <View style={{ height: 100 }} />
@@ -206,7 +274,7 @@ export function ReportScreen() {
           <View style={styles.bottomBarRow}>
             <View style={styles.bottomBarInfo}>
               <Ionicons name="shield-checkmark-outline" size={16} color={colors.textSecondary} />
-              <Text style={styles.bottomBarInfoText}>Your report is anonymous</Text>
+              <Text style={styles.bottomBarInfoText}>{t('report.anonymous')}</Text>
             </View>
             <Animated.View style={{ transform: [{ scale: submitScale }] }}>
               <TouchableOpacity
@@ -220,7 +288,7 @@ export function ReportScreen() {
                 ) : (
                   <>
                     <Ionicons name="send" size={16} color={colors.white} />
-                    <Text style={styles.submitBtnText}>Submit</Text>
+                    <Text style={styles.submitBtnText}>{t('report.submit')}</Text>
                   </>
                 )}
               </TouchableOpacity>

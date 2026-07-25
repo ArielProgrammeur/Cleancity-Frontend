@@ -25,6 +25,13 @@ Splash → Onboarding → Login/SignUp → Dashboard (Bottom Tabs)
                                          ├── Rewards
                                          ├── Marketplace
                                          └── Profile
+                              → Admin Back Office (/admin)
+                                         ├── Dashboard (stats, charts)
+                                         ├── Conducteurs (CRUD)
+                                         ├── Signalements (placeholder)
+                                         ├── Utilisateurs (placeholder)
+                                         ├── Récompenses (placeholder)
+                                         └── Paramètres (placeholder)
 ```
 
 ### Fonctionnalités actuelles
@@ -34,11 +41,16 @@ Splash → Onboarding → Login/SignUp → Dashboard (Bottom Tabs)
 - **Dashboard** : stats, niveau/XP, impact CO₂, Quick Access, collecte, rapports récents
 - **Reporting** : formulaire signalement (photo, catégorie, description)
 - **Marketplace** : prix des matériaux recyclables
+- **Back Office Admin** : dashboard Power BI-like, sidebar navigation, gestion CRUD des conducteurs, authentification admin via login principal
 
 ### Commandes
 ```bash
 npx expo start -c    # Lancer (cache vidé)
 npx tsc --noEmit     # Vérifier les types
 ```
+
+### Docs complémentaires
+- `README-BACKOFFICE.md` — Documentation complète du back office (dashboard, sidebar, conducteurs CRUD, authentification)
+- `docs/ARCHITECTURE_GLOBALE.md` — Architecture détaillée fichier par fichier
 
 *Voir docs/ARCHITECTURE_GLOBALE.md pour le détail complet*

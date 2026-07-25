@@ -9,22 +9,49 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { AuthInput } from '../components/AuthInput';
+import { auth } from '../../../../core/firebase';
+import { sendPasswordResetEmail } from 'firebase/auth';
 
 export function ForgotPasswordScreen() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sent, setSent] = useState(false);
 
   const handleSend = async () => {
+    if (!email.trim()) {
+      Alert.alert(t('auth.error'), t('auth.enterEmail'));
+      return;
+    }
+    if (!auth) {
+      Alert.alert(t('auth.error'), t('auth.firebaseNotReady'));
+      return;
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
       setSent(true);
-    }, 1500);
+    } catch (error: any) {
+      let message = t('auth.genericError');
+      switch (error.code) {
+        case 'auth/user-not-found':
+          message = t('auth.accountNotFound');
+          break;
+        case 'auth/invalid-email':
+          message = t('auth.invalidEmail');
+          break;
+      }
+      Alert.alert(t('auth.error'), message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -45,31 +72,31 @@ export function ForgotPasswordScreen() {
           <View style={styles.logoCircle}>
             <Image source={require('../../../../../assets/logo.png')} style={styles.logoImage} />
           </View>
-          <Text style={styles.title}>Reset password</Text>
+          <Text style={styles.title}>{t('auth.resetTitle')}</Text>
           <Text style={styles.subtitle}>
-            Enter your email address and we&apos;ll send you a link to reset your password
+            {t('auth.resetSubtitle')}
           </Text>
         </View>
 
         {sent ? (
           <View style={styles.sentContainer}>
             <Ionicons name="checkmark-circle" size={64} color="#2E7D32" />
-            <Text style={styles.sentTitle}>Email sent</Text>
+            <Text style={styles.sentTitle}>{t('auth.emailSent')}</Text>
             <Text style={styles.sentText}>
-              Check your inbox for the password reset link
+              {t('auth.emailSentDesc')}
             </Text>
             <TouchableOpacity
               style={styles.backToLoginButton}
               onPress={() => router.replace('/login')}
             >
-              <Text style={styles.backToLoginText}>Back to Sign In</Text>
+              <Text style={styles.backToLoginText}>{t('auth.backToLogin')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.form}>
             <AuthInput
-              label="Email"
-              placeholder="Email address"
+              label={t('common.email')}
+              placeholder={t('auth.emailPlaceholder')}
               value={email}
               onChangeText={setEmail}
               icon="mail-outline"
@@ -84,16 +111,16 @@ export function ForgotPasswordScreen() {
               {isLoading ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text style={styles.sendButtonText}>Send reset link</Text>
+                <Text style={styles.sendButtonText}>{t('auth.resetLink')}</Text>
               )}
             </TouchableOpacity>
           </View>
         )}
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Remember your password? </Text>
+          <Text style={styles.footerText}>{t('auth.rememberPassword')} </Text>
           <TouchableOpacity onPress={() => router.push('/login')}>
-            <Text style={styles.footerLink}>Sign In</Text>
+            <Text style={styles.footerLink}>{t('auth.signIn')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

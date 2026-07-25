@@ -9,25 +9,74 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { AuthInput } from '../components/AuthInput';
+import { auth } from '../../../../core/firebase';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { api } from '../../../../core/api/api';
 
 export function SignUpScreen() {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSignUp = async () => {
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      Alert.alert(t('auth.error'), t('auth.fillAllFields'));
+      return;
+    }
+    if (password.length < 6) {
+      Alert.alert(t('auth.error'), t('auth.passwordMinLength'));
+      return;
+    }
+    if (!auth) {
+      Alert.alert(t('auth.error'), t('auth.firebaseNotReady'));
+      return;
+    }
+
     setIsLoading(true);
-    // Simuler une inscription (Firebase plus tard)
-    setTimeout(() => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      await updateProfile(userCredential.user, { displayName: name.trim() });
+
+      const res = await fetch(`${api.baseUrl}/api/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: userCredential.user.uid, email: email.trim(), password, name: name.trim(), phone: phone.trim() || null, address: address.trim() || null }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || t('auth.serverError'));
+      }
+
+      Alert.alert(t('common.success'), t('auth.accountCreated'));
+      router.replace('/otp-verification');
+    } catch (error: any) {
+      let message = t('auth.genericError');
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          message = t('auth.emailInUse');
+          break;
+        case 'auth/weak-password':
+          message = t('auth.passwordMinLength');
+          break;
+        case 'auth/invalid-email':
+          message = t('auth.invalidEmail');
+          break;
+      }
+      Alert.alert(t('auth.error'), message);
+    } finally {
       setIsLoading(false);
-      router.replace('/(tabs)');
-    }, 1500);
+    }
   };
 
   return (
@@ -44,16 +93,16 @@ export function SignUpScreen() {
           <View style={styles.logoCircle}>
             <Image source={require('../../../../../assets/logo.png')} style={styles.logoImage} />
           </View>
-          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.title}>{t('auth.signupTitle')}</Text>
           <Text style={styles.subtitle}>
-            Join the community and help keep your city clean
+            {t('auth.signupSubtitle')}
           </Text>
         </View>
 
         <View style={styles.form}>
           <AuthInput
-            label="Full name"
-            placeholder="Full name"
+            label={t('common.fullName')}
+            placeholder={t('auth.namePlaceholder')}
             value={name}
             onChangeText={setName}
             icon="person-outline"
@@ -61,8 +110,8 @@ export function SignUpScreen() {
           />
 
           <AuthInput
-            label="Phone number"
-            placeholder="Phone number"
+            label={t('common.phone')}
+            placeholder={t('auth.phonePlaceholder')}
             value={phone}
             onChangeText={setPhone}
             icon="call-outline"
@@ -70,8 +119,17 @@ export function SignUpScreen() {
           />
 
           <AuthInput
-            label="Email"
-            placeholder="Email address"
+            label={t('common.address')}
+            placeholder={t('auth.addressPlaceholder')}
+            value={address}
+            onChangeText={setAddress}
+            icon="location-outline"
+            autoCapitalize="words"
+          />
+
+          <AuthInput
+            label={t('common.email')}
+            placeholder={t('auth.emailPlaceholder')}
             value={email}
             onChangeText={setEmail}
             icon="mail-outline"
@@ -79,8 +137,8 @@ export function SignUpScreen() {
           />
 
           <AuthInput
-            label="Password"
-            placeholder="Password"
+            label={t('common.password')}
+            placeholder={t('auth.emailPlaceholder')}
             value={password}
             onChangeText={setPassword}
             icon="lock-closed-outline"
@@ -95,30 +153,15 @@ export function SignUpScreen() {
             {isLoading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={styles.signUpButtonText}>Create Account</Text>
+              <Text style={styles.signUpButtonText}>{t('auth.signupTitle')}</Text>
             )}
           </TouchableOpacity>
         </View>
 
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or sign up with</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <View style={styles.socialRow}>
-          <TouchableOpacity style={styles.socialButton}>
-            <Ionicons name="logo-google" size={22} color="#111827" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.socialButton}>
-            <Ionicons name="logo-apple" size={22} color="#111827" />
-          </TouchableOpacity>
-        </View>
-
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account? </Text>
+          <Text style={styles.footerText}>{t('auth.hasAccount')} </Text>
           <TouchableOpacity onPress={() => router.push('/login')}>
-            <Text style={styles.footerLink}>Sign In</Text>
+            <Text style={styles.footerLink}>{t('auth.signIn')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

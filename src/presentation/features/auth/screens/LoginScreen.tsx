@@ -9,37 +9,98 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { AuthInput } from '../components/AuthInput';
 import { useAdmin } from '../../../../core/contexts/AdminContext';
-
-const ADMIN_EMAIL = 'admin@gmail.com';
-const ADMIN_PASSWORD = 'root';
+import { useUser } from '../../../../core/contexts/UserContext';
+import { auth } from '../../../../core/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { api } from '../../../../core/api/api';
 
 export function LoginScreen() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const admin = useAdmin();
+  const { setUserId, setUserName, setIsLoggedIn } = useUser();
 
   const handleLogin = async () => {
-    setIsLoading(true);
-
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      const result = await admin.login(email, password);
-      setIsLoading(false);
-      if (result.success) {
-        router.replace('/admin' as any);
-      }
+    if (!email.trim() || !password.trim()) {
+      Alert.alert(t('auth.error'), t('auth.fillAllFields'));
       return;
     }
 
-    setTimeout(() => {
-      setIsLoading(false);
+    setIsLoading(true);
+
+    try {
+      if (!auth) {
+        Alert.alert(t('auth.error'), t('auth.firebaseNotReady'));
+        setIsLoading(false);
+        return;
+      }
+
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const user = userCredential.user;
+      const tokenResult = await user.getIdTokenResult();
+      const role = tokenResult.claims.role;
+
+      if (role === 'admin') {
+        setIsLoading(false);
+        router.replace('/admin');
+        return;
+      }
+
+      if (role === 'driver') {
+        setIsLoading(false);
+        router.replace('/driver');
+        return;
+      }
+
+      const token = await user.getIdToken();
+      const statusRes = await fetch(`${api.baseUrl}/api/auth/verification-status/${user.uid}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (statusRes.ok) {
+        const status = await statusRes.json();
+        if (!status.phoneVerified && !status.emailVerified) {
+          setIsLoading(false);
+          router.replace('/otp-verification');
+          return;
+        }
+      }
+
+      setUserId(user.uid);
+      setUserName(user.displayName || user.email || '');
+      setIsLoggedIn(true);
       router.replace('/(tabs)');
-    }, 1500);
+    } catch (error: any) {
+      let message = t('auth.genericError');
+      switch (error.code) {
+        case 'auth/user-not-found':
+          message = t('auth.userNotFound');
+          break;
+        case 'auth/wrong-password':
+          message = t('auth.wrongPassword');
+          break;
+        case 'auth/invalid-email':
+          message = t('auth.invalidEmail');
+          break;
+        case 'auth/invalid-credential':
+          message = t('auth.wrongEmailOrPassword');
+          break;
+        case 'auth/too-many-requests':
+          message = t('auth.tooManyRequests');
+          break;
+      }
+      Alert.alert(t('auth.error'), message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -56,16 +117,16 @@ export function LoginScreen() {
           <View style={styles.logoCircle}>
             <Image source={require('../../../../../assets/logo.png')} style={styles.logoImage} />
           </View>
-          <Text style={styles.welcomeTitle}>Welcome Back</Text>
+          <Text style={styles.welcomeTitle}>{t('auth.loginTitle')}</Text>
           <Text style={styles.welcomeSubtitle}>
-            Sign in to continue cleaning your city
+            {t('auth.loginSubtitle')}
           </Text>
         </View>
 
         <View style={styles.form}>
           <AuthInput
-            label="Email"
-            placeholder="Email address"
+            label={t('common.email')}
+            placeholder={t('auth.emailPlaceholder')}
             value={email}
             onChangeText={setEmail}
             icon="mail-outline"
@@ -73,8 +134,8 @@ export function LoginScreen() {
           />
 
           <AuthInput
-            label="Password"
-            placeholder="Password"
+            label={t('common.password')}
+            placeholder={t('auth.emailPlaceholder')}
             value={password}
             onChangeText={setPassword}
             icon="lock-closed-outline"
@@ -82,7 +143,7 @@ export function LoginScreen() {
           />
 
           <TouchableOpacity style={styles.forgotPassword} onPress={() => router.push('/forgot-password')}>
-            <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+            <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -93,30 +154,15 @@ export function LoginScreen() {
             {isLoading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={styles.loginButtonText}>Sign In</Text>
+              <Text style={styles.loginButtonText}>{t('auth.signIn')}</Text>
             )}
           </TouchableOpacity>
         </View>
 
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or continue with</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <View style={styles.socialRow}>
-          <TouchableOpacity style={styles.socialButton}>
-            <Ionicons name="logo-google" size={22} color="#111827" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.socialButton}>
-            <Ionicons name="logo-apple" size={22} color="#111827" />
-          </TouchableOpacity>
-        </View>
-
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Don&apos;t have an account? </Text>
+          <Text style={styles.footerText}>{t('auth.noAccount')} </Text>
           <TouchableOpacity onPress={() => router.push('/signup')}>
-            <Text style={styles.footerLink}>Sign Up</Text>
+            <Text style={styles.footerLink}>{t('auth.signUp')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

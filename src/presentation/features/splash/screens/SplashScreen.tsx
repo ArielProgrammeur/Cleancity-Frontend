@@ -43,7 +43,7 @@ export function SplashScreen() {
       }).start(() => {
         router.replace('/onboarding');
       });
-    }, 6500);
+    }, 5000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -55,10 +55,10 @@ export function SplashScreen() {
       >
         <Image source={require('../../../../../assets/logo.png')} style={styles.logo} />
         <Text style={styles.title}>CleanCity</Text>
-        <Animated.Text style={[styles.tagline, { opacity: fadeTagline }]}>
-          Gardons notre ville propre
-        </Animated.Text>
       </Animated.View>
+      <Animated.Text style={[styles.tagline, { opacity: fadeTagline }]}>
+        Ensemble pour une ville plus propre, plus intelligente.
+      </Animated.Text>
     </Animated.View>
   );
 }
@@ -80,14 +80,17 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   title: {
-    marginTop: 16,
+    marginTop: 20,
     fontSize: 36,
     fontWeight: 'bold',
     color: '#FFFFFF',
+    textAlign: 'center',
   },
   tagline: {
-    marginTop: 32,
-    fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 48,
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.85)',
+    textAlign: 'center',
+    paddingHorizontal: 32,
   },
 });

@@ -9,3 +9,5 @@ export { default as LeaderboardScreen } from './screens/LeaderboardScreen';
 export { default as WishlistScreen } from './screens/WishlistScreen';
 export { default as ReportHistoryScreen } from './screens/ReportHistoryScreen';
 export { default as CreateListingScreen } from './screens/CreateListingScreen';
+export { default as TrackingScreen } from './screens/TrackingScreen';
+export { default as PredictionsScreen } from './screens/PredictionsScreen';

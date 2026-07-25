@@ -7,8 +7,8 @@ import { useAdmin } from '../../src/core/contexts/AdminContext';
 
 export default function AdminLogin() {
   const { login } = useAdmin();
-  const [email, setEmail] = useState('admin@gmail.com');
-  const [password, setPassword] = useState('root');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 

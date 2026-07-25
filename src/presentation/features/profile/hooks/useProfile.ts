@@ -12,13 +12,17 @@ export interface UseProfileReturn {
   refresh: () => void;
 }
 
-export function useProfile(repository: IProfileRepository, userId: string = 'user_1'): UseProfileReturn {
+export function useProfile(repository: IProfileRepository, userId: string): UseProfileReturn {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
+    if (!userId) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {

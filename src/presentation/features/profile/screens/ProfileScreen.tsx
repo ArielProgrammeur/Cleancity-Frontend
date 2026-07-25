@@ -10,7 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { ProfileMockDatasource } from '../../../../data/datasources/ProfileMockDatasource';
+import { ProfileApiDatasource } from '../../../../data/datasources/ProfileApiDatasource';
 import { ProfileRepositoryImpl } from '../../../../data/repositories/ProfileRepositoryImpl';
 import { useProfile } from '../hooks/useProfile';
 import { useUser } from '../../../../core/contexts/UserContext';
@@ -18,11 +18,14 @@ import { StatsGrid } from '../components/StatsGrid';
 import { AchievementSection } from '../components/AchievementSection';
 import type { UserProfile } from '../../../../domain/entities/Profile';
 
-const datasource = new ProfileMockDatasource();
+const datasource = new ProfileApiDatasource();
 const repository = new ProfileRepositoryImpl(datasource);
 
 const SETTINGS_ROWS: { icon: string; label: string; color: string; action: () => void }[] = [
   { icon: 'notifications-outline', label: 'Notifications', color: '#2563EB', action: () => router.push('/notifications') },
+  { icon: 'map-outline', label: 'Suivi GPS', color: '#10B981', action: () => router.push('/tracking' as any) },
+  { icon: 'analytics-outline', label: 'Prédictions IA', color: '#8B5CF6', action: () => router.push('/predictions' as any) },
+  { icon: 'calendar-outline', label: 'Planning collecte', color: '#F59E0B', action: () => router.push('/collection-schedule') },
   { icon: 'shield-outline', label: 'Privacy', color: '#059669', action: () => router.push('/settings') },
   { icon: 'color-palette-outline', label: 'Theme', color: '#7C3AED', action: () => router.push('/settings') },
   { icon: 'language-outline', label: 'Language', color: '#D97706', action: () => router.push('/language') },
@@ -113,8 +116,8 @@ const ph = StyleSheet.create({
 export function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const { profile, badges, isLoading, error, updateProfile, refresh } = useProfile(repository);
-  const { avatarUri, setAvatarUri, setUserName } = useUser();
+  const { userId, avatarUri, setAvatarUri, setUserName } = useUser();
+  const { profile, badges, isLoading, error, updateProfile, refresh } = useProfile(repository, userId);
   const [showEdit, setShowEdit] = useState(false);
   const [editName, setEditName] = useState('');
 

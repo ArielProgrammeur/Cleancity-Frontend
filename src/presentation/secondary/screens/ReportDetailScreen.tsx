@@ -1,72 +1,103 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../../core/theme/colors';
 import { spacing, borderRadius } from '../../../core/theme/spacing';
+import { api } from '../../../core/api/api';
+import { auth } from '../../../core/firebase';
 import type { WasteReport } from '../../../domain/entities/WasteReport';
 
-const MOCK_REPORTS: WasteReport[] = [
-  {
-    id: 'r1', userId: 'user_1',
-    title: 'Plastic bottle near park', description: 'Plusieurs bouteilles en plastique abandonnées près du terrain de jeu.',
-    category: 'plastic', latitude: 48.8566, longitude: 2.3522,
-    imageUrl: '', status: 'pending',
-    createdAt: new Date('2026-06-17T08:00:00Z'), updatedAt: new Date('2026-06-17T08:00:00Z'),
-  },
-  {
-    id: 'r2', userId: 'user_1',
-    title: 'Glass on Main Street', description: 'Verre brisé sur le trottoir, dangereux pour les piétons.',
-    category: 'glass', latitude: 48.857, longitude: 2.353,
-    imageUrl: '', status: 'in_progress',
-    createdAt: new Date('2026-06-17T05:00:00Z'), updatedAt: new Date('2026-06-17T11:00:00Z'),
-  },
-  {
-    id: 'r3', userId: 'user_1',
-    title: 'Electronics downtown', description: 'Appareils électroniques abandonnés derrière le centre commercial.',
-    category: 'electronic', latitude: 48.858, longitude: 2.354,
-    imageUrl: '', status: 'resolved',
-    createdAt: new Date('2026-06-16T14:00:00Z'), updatedAt: new Date('2026-06-17T09:00:00Z'),
-  },
-];
-
-const STATUS_CONFIG = {
-  pending: { label: 'Pending', color: colors.warning, bg: '#FFFBEB', icon: 'time-outline' as const },
-  in_progress: { label: 'In Progress', color: colors.info, bg: '#EFF6FF', icon: 'construct-outline' as const },
-  resolved: { label: 'Resolved', color: colors.success, bg: '#ECFDF5', icon: 'checkmark-circle-outline' as const },
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  plastic: 'Plastique', glass: 'Verre', organic: 'Organique',
-  electronic: 'Électronique', hazardous: 'Dangereux', other: 'Autre',
-};
-
 export default function ReportDetailScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const report = MOCK_REPORTS.find((r) => r.id === id);
 
-  if (!report) {
+  const STATUS_CONFIG = {
+    pending: { label: t('reportDetail.status.pending'), color: colors.warning, bg: '#FFFBEB', icon: 'time-outline' as const },
+    in_progress: { label: t('reportDetail.status.in_progress'), color: colors.info, bg: '#EFF6FF', icon: 'construct-outline' as const },
+    resolved: { label: t('reportDetail.status.resolved'), color: colors.success, bg: '#ECFDF5', icon: 'checkmark-circle-outline' as const },
+  };
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    plastic: t('reportDetail.categories.plastic'), glass: t('reportDetail.categories.glass'), organic: t('reportDetail.categories.organic'),
+    electronic: t('reportDetail.categories.electronic'), hazardous: t('reportDetail.categories.hazardous'), other: t('reportDetail.categories.other'),
+  };
+  const [report, setReport] = useState<WasteReport | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = auth?.currentUser ? await auth.currentUser.getIdToken() : null;
+        const res = await fetch(`${api.baseUrl}/api/reports/${id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) throw new Error(t('reportDetail.notFound'));
+        const data = await res.json();
+        if (!cancelled) {
+          setReport({
+            id: data.id,
+            userId: data.userId,
+            title: data.title,
+            description: data.description,
+            category: data.category,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            imageUrl: data.imageUrl,
+            status: data.status,
+            createdAt: new Date(data.createdAt),
+            updatedAt: new Date(data.updatedAt),
+          });
+        }
+      } catch (e: any) {
+        if (!cancelled) setError(e.message || 'Erreur de chargement');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [id]);
+
+  if (loading) {
     return (
       <View style={styles.center}>
-        <Stack.Screen options={{ title: 'Report' }} />
-        <Ionicons name="alert-circle-outline" size={48} color={colors.textSecondary} />
-        <Text style={styles.errorText}>Report not found</Text>
+        <Stack.Screen options={{ title: t('reportDetail.title') }} />
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.errorText}>{t('common.loading')}</Text>
       </View>
     );
   }
 
-  const status = STATUS_CONFIG[report.status as keyof typeof STATUS_CONFIG];
+  if (!report || error) {
+    return (
+      <View style={styles.center}>
+        <Stack.Screen options={{ title: t('reportDetail.title') }} />
+        <Ionicons name="alert-circle-outline" size={48} color={colors.textSecondary} />
+        <Text style={styles.errorText}>{error || t('reportDetail.notFound')}</Text>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: spacing.md }}>
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>{t('common.back')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const status = STATUS_CONFIG[report.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.pending;
   const timeAgo = getTimeAgo(report.createdAt);
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Report Detail', headerTintColor: colors.primary }} />
+      <Stack.Screen options={{ title: t('reportDetail.title'), headerTintColor: colors.primary }} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {report.imageUrl ? (
           <Image source={{ uri: report.imageUrl }} style={styles.image} />
         ) : (
           <View style={[styles.imagePlaceholder, { backgroundColor: status.bg }]}>
             <Ionicons name="camera-outline" size={48} color={status.color} />
-            <Text style={[styles.noImageText, { color: status.color }]}>No photo</Text>
+            <Text style={[styles.noImageText, { color: status.color }]}>{t('reportDetail.noPhoto')}</Text>
           </View>
         )}
 
@@ -90,7 +121,7 @@ export default function ReportDetailScreen() {
           <Text style={styles.description}>{report.description}</Text>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Location</Text>
+            <Text style={styles.sectionTitle}>{t('reportDetail.location')}</Text>
             <View style={styles.locationCard}>
               <Ionicons name="location-outline" size={20} color={colors.primary} />
               <Text style={styles.locationText}>
@@ -100,31 +131,24 @@ export default function ReportDetailScreen() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Timeline</Text>
+            <Text style={styles.sectionTitle}>{t('reportDetail.chronology')}</Text>
             <TimelineItem
-              icon="flag-outline" label="Reported" time={getTimeAgo(report.createdAt)}
+              icon="flag-outline" label={t('reportDetail.reported')} time={getTimeAgo(report.createdAt)}
               isFirst color={colors.primary}
             />
             {report.status !== 'pending' && (
               <TimelineItem
-                icon="construct-outline" label="In Progress" time={getTimeAgo(report.updatedAt)}
+                icon="construct-outline" label={t('reportDetail.status.in_progress')} time={getTimeAgo(report.updatedAt)}
                 color={colors.info}
               />
             )}
             {report.status === 'resolved' && (
               <TimelineItem
-                icon="checkmark-circle-outline" label="Resolved" time={getTimeAgo(report.updatedAt)}
+                icon="checkmark-circle-outline" label={t('reportDetail.status.resolved')} time={getTimeAgo(report.updatedAt)}
                 isLast color={colors.success}
               />
             )}
           </View>
-
-          {report.status === 'pending' && (
-            <TouchableOpacity style={styles.deleteButton}>
-              <Ionicons name="trash-outline" size={18} color={colors.error} />
-              <Text style={styles.deleteText}>Delete Report</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </ScrollView>
     </View>
@@ -154,11 +178,11 @@ function TimelineItem({ icon, label, time, color, isFirst, isLast }: {
 function getTimeAgo(date: Date): string {
   const diff = Date.now() - date.getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60) return `il y a ${mins}m`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return `il y a ${hours}h`;
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return `il y a ${days}j`;
 }
 
 const styles = StyleSheet.create({
@@ -189,6 +213,4 @@ const styles = StyleSheet.create({
   timelineContent: { marginLeft: spacing.sm, paddingBottom: spacing.md },
   timelineLabel: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
   timelineTime: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-  deleteButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: spacing.lg, paddingVertical: spacing.sm, gap: spacing.xs },
-  deleteText: { fontSize: 15, fontWeight: '600', color: colors.error },
 });

@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { MarketplaceMockDatasource } from '../../../../data/datasources/MarketplaceMockDatasource';
+import { MarketplaceApiDatasource } from '../../../../data/datasources/MarketplaceApiDatasource';
 import { MarketplaceRepositoryImpl } from '../../../../data/repositories/MarketplaceRepositoryImpl';
 import { useMarketplace, getCategoryLabel, type ProductSort } from '../hooks/useMarketplace';
 import type { Product } from '../../../../domain/entities/Product';
@@ -17,7 +17,7 @@ import { CategoryFilter } from '../components/MarketplaceCategoryFilter';
 import { colors, spacing, radius, typography, shadows } from '../theme';
 import i18n from '../../../../core/i18n';
 
-const datasource = new MarketplaceMockDatasource();
+const datasource = new MarketplaceApiDatasource();
 const repository = new MarketplaceRepositoryImpl(datasource);
 
 const SORT_OPTIONS: { key: ProductSort; label: string }[] = [

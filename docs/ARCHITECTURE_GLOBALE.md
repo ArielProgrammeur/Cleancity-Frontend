@@ -51,7 +51,85 @@ app/ (Expo Router — fichier-based)
 **Flux utilisateur :**
 ```
 Splash (2.5s) → Onboarding (3 slides) → Login/SignUp → Dashboard (tabs)
+                                                          → Admin Back Office (/admin)
+                                                               si admin@gmail.com / root
 ```
+
+---
+
+## Back Office Admin
+
+### Accès
+
+| Identifiant | Valeur |
+|---|---|
+| Email | `admin@gmail.com` |
+| Mot de passe | `root` |
+
+La détection se fait automatiquement dans `LoginScreen.tsx` : si les champs email/password correspondent aux credentials admin, l'utilisateur est redirigé vers `/admin` au lieu de `/(tabs)`. Aucun bouton visible n'indique l'existence du back office.
+
+### Navigation admin
+
+```
+app/admin/
+├── _layout.tsx                    # Guard d'auth (Redirect si non connecté) + sidebar overlay
+├── login.tsx                      # Écran login dark dédié (fallback si accès direct à /admin)
+├── index.tsx                      # Dashboard : header gradient, 4 StatCards, BarChart, DonutChart, TrendChart, TimelineList
+├── conducteurs/
+│   ├── index.tsx                  # Liste avec recherche, stats row, cartes avatars
+│   ├── creer.tsx                  # Formulaire création (4 sections : identité, permis, véhicule, affectation)
+│   └── [id]/
+│       ├── index.tsx              # Détail : profil card, quick stats, infos, véhicule, activité
+│       └── editer.tsx             # Formulaire modification (pré-rempli)
+├── signalements/index.tsx         # Placeholder
+├── utilisateurs/index.tsx         # Placeholder
+├── recompenses/index.tsx          # Placeholder
+└── parametres/index.tsx           # Placeholder
+```
+
+### Composants back office
+
+```
+src/presentation/admin/components/
+├── Sidebar.tsx              # Tiroir latéral 72% largeur, 6 sections, Reanimated slide-in
+├── AdminHeader.tsx          # Header gradient (LinearGradient) avec avatar, métriques, menu btn
+├── StatCard.tsx             # Carte vitrée pressable → ouvre StatDetailModal
+├── StatDetailModal.tsx      # Bottom sheet : breakdown par utilisateur avec avatars, valeurs, statuts
+├── AnimatedCounter.tsx      # Compteur 0→N avec animation de défilement
+├── ChartCard.tsx            # Conteneur titre + badge Live
+├── BarChart.tsx             # Barres horizontales SVG avec glow
+├── DonutChart.tsx           # Donut SVG avec arcs proportionnels
+├── TrendChart.tsx           # Barres verticales 12 mois avec dégradé
+└── TimelineList.tsx         # Timeline avec points colorés et badges
+```
+
+### Contextes spécifiques
+
+| Contexte | Fichier | Rôle |
+|---|---|---|
+| `AdminContext` | `src/core/contexts/AdminContext.tsx` | Auth admin (login/logout, isAuthenticated, admin user) |
+| `SidebarContext` | `src/core/contexts/SidebarContext.tsx` | État du tiroir (visible, toggle, close) |
+
+### Datasources mock
+
+| Datasource | Fichier | Données |
+|---|---|---|
+| `AdminMockDatasource` | `src/data/datasources/AdminMockDatasource.ts` | Stats dashboard + breakdown détaillé (584 signalements, 342 users, etc.) |
+| `ConducteurMockDatasource` | `src/data/datasources/ConducteurMockDatasource.ts` | 10 conducteurs avec CRUD complet (getAll, getById, create, update, delete, getStats) |
+
+### Entité admin
+
+| Entité | Fichier | Champs clés |
+|---|---|---|
+| `Conducteur` | `src/domain/entities/Conducteur.ts` | id, nom, prenom, email, telephone, adresse, permis, categoriePermis, statut, zone, vehicule*, signalementsTraites, tauxCompletion, rotation, tempsMoyen, derniereActivite |
+
+### Décisions techniques clés (admin)
+1. **`<Redirect>` plutôt que `router.replace` dans useEffect** pour le guard d'auth — évite les boucles infinies ("Maximum update depth exceeded").
+2. **SidebarContext** découplé du layout — `SidebarProvider` wrappé dans `app/_layout.tsx` à la racine, accessible depuis tout l'arbre.
+3. **StatDetailModal en bottom sheet** — pas de navigation, l'utilisateur reste sur le dashboard.
+4. **ConducteurMockDatasource séparé** d'AdminMockDatasource — isolement du CRUD, testable.
+5. **Avatar par initiales** (première lettre prénom + nom) — pas de gestion d'upload photo.
+6. **Menu hamburger dans le header** au lieu du logout — la déconnexion est dans le pied de la sidebar.
 
 ---
 
@@ -59,6 +137,7 @@ Splash (2.5s) → Onboarding (3 slides) → Login/SignUp → Dashboard (tabs)
 
 ### 1. `app/_layout.tsx` — Layout racine
 - Wrappe l'app dans `SafeAreaProvider`
+- Wrappe `UserProvider` (avatar partagé), `AdminProvider` (auth admin), `SidebarProvider` (état sidebar)
 - Définit un `Stack` global pour la navigation
 - Tous les écrans sont des enfants de ce Stack
 
@@ -81,6 +160,7 @@ Splash (2.5s) → Onboarding (3 slides) → Login/SignUp → Dashboard (tabs)
 - Boutons Google / Apple
 - Lien vers SignUp
 - Connexion simulée (Firebase plus tard)
+- **Détection admin** : si email === `admin@gmail.com` && password === `root` → redirige vers `/admin` au lieu de `/(tabs)`
 
 ### 5. `app/signup.tsx` — Inscription
 - Affiche `SignUpScreen`
@@ -142,6 +222,9 @@ Splash (2.5s) → Onboarding (3 slides) → Login/SignUp → Dashboard (tabs)
 | `theme/colors.ts` | Palette de couleurs |
 | `theme/spacing.ts` | Constantes d'espacement |
 | `theme/typography.ts` | Constantes typographiques |
+| `contexts/UserContext.tsx` | Avatar URI partagé entre Profile et Home screens |
+| `contexts/AdminContext.tsx` | Auth admin (login/logout avec admin@gmail.com/root) |
+| `contexts/SidebarContext.tsx` | État du tiroir de navigation admin (visible/toggle/close) |
 
 ### 10. `src/domain/` — Couche métier
 
@@ -156,6 +239,7 @@ Entités :
 | `entities/WasteCategory.ts` | Enum : PLASTIC, GLASS, ORGANIC, ELECTRONIC, HAZARDOUS, OTHER |
 | `entities/ReportStatus.ts` | Enum : PENDING, APPROVED, COLLECTED, REJECTED |
 | `entities/CollectionWaypoint.ts` | Interface point de collecte (lat, lng, address, estimatedTime) |
+| `entities/Conducteur.ts` | Interface Conducteur (id, nom, prenom, email, telephone, permis, statut, zone, vehicule*, stats performance) |
 
 Repositories (contrats) :
 

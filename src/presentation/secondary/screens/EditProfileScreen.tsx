@@ -1,17 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Alert } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../core/theme/colors';
 import { spacing, borderRadius } from '../../../core/theme/spacing';
+import { useUser } from '../../../core/contexts/UserContext';
 
 export default function EditProfileScreen() {
-  const [name, setName] = useState('Ariel');
-  const [email, setEmail] = useState('ariel@ecocitizen.com');
-  const [phone, setPhone] = useState('+33 6 12 34 56 78');
-  const [bio, setBio] = useState('Passionate about keeping our city clean!');
+  const { profile, setProfile, setUserName } = useUser();
+  const [name, setName] = useState(profile?.name ?? '');
+  const [email, setEmail] = useState(profile?.email ?? '');
+
+  useEffect(() => {
+    if (profile) {
+      setName(profile.name);
+      setEmail(profile.email);
+    }
+  }, [profile]);
 
   const handleSave = () => {
+    if (profile) {
+      setProfile({ ...profile, name, email });
+      setUserName(name);
+    }
     Alert.alert('Profile Updated', 'Your changes have been saved successfully.', [
       { text: 'OK', onPress: () => router.back() },
     ]);
@@ -63,28 +74,6 @@ export default function EditProfileScreen() {
             icon="mail-outline"
             keyboardType="email-address"
           />
-          <InputField
-            label="Phone"
-            value={phone}
-            onChangeText={setPhone}
-            icon="call-outline"
-            keyboardType="phone-pad"
-          />
-          <View style={styles.field}>
-            <Text style={styles.label}>Bio</Text>
-            <View style={styles.inputRow}>
-              <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
-              <TextInput
-                style={[styles.input, styles.bioInput]}
-                value={bio}
-                onChangeText={setBio}
-                placeholder="Tell us about yourself"
-                placeholderTextColor={colors.divider}
-                multiline
-                numberOfLines={3}
-              />
-            </View>
-          </View>
 
           <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
             <Ionicons name="checkmark-circle" size={20} color={colors.white} />

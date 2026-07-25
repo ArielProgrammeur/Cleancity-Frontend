@@ -65,7 +65,7 @@ export function getCategoryIcon(category: RewardCategory | 'all'): string {
   return CATEGORY_ICONS[category] ?? 'ellipse';
 }
 
-export function useRewards(repository: IRewardRepository, userId: string = 'user_1'): UseRewardsReturn {
+export function useRewards(repository: IRewardRepository, userId: string): UseRewardsReturn {
   const [allRewards, setAllRewards] = useState<Reward[]>([]);
   const [categories, setCategories] = useState<RewardCategory[]>([]);
   const [history, setHistory] = useState<ClaimedReward[]>([]);

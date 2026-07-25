@@ -23,7 +23,7 @@ export const slides: OnboardingSlide[] = [
     title: 'Gagnez des points',
     description:
       'Chaque signalement vous rapporte des points. Plus vous signalez, plus vous cumulez !',
-    backgroundColor: '#1B5E20',
+    backgroundColor: '#2E7D32',
   },
   {
     id: '3',
@@ -32,6 +32,6 @@ export const slides: OnboardingSlide[] = [
     title: 'Échangez vos récompenses',
     description:
       'Utilisez vos points pour obtenir des bons d\'achat, des réductions, ou d\'autres cadeaux. Votre ville vous remercie !',
-    backgroundColor: '#0D3B0F',
+    backgroundColor: '#2E7D32',
   },
 ];

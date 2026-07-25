@@ -1,6 +1,5 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import * as ExpoLocalization from 'expo-localization';
 import en from './en.json';
 import fr from './fr.json';
 
@@ -9,9 +8,17 @@ const resources = {
   fr: { translation: fr },
 };
 
+let lng = 'fr';
+try {
+  const ExpoLocalization = require('expo-localization');
+  lng = ExpoLocalization.getLocales?.()?.[0]?.languageCode ?? 'fr';
+} catch {
+  // expo-localization not available, default to French
+}
+
 i18n.use(initReactI18next).init({
   resources,
-  lng: ExpoLocalization.getLocales()?.[0]?.languageCode ?? 'en',
+  lng,
   fallbackLng: 'en',
   compatibilityJSON: 'v4',
   interpolation: {

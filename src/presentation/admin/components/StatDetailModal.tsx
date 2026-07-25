@@ -2,7 +2,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInRight, FadeOut } from 'react-native-reanimated';
 import { useState, useEffect } from 'react';
-import type { StatDetailItem } from '../../../data/datasources/AdminMockDatasource';
+import type { StatDetailItem } from '../../../data/datasources/AdminApiDatasource';
 
 interface StatDetailModalProps {
   visible: boolean;

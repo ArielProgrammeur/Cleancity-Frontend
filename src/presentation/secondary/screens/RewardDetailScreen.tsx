@@ -3,6 +3,7 @@ import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../core/theme/colors';
 import { spacing, borderRadius } from '../../../core/theme/spacing';
+import { useUser } from '../../../core/contexts/UserContext';
 
 const MOCK_REWARDS = [
   { id: 'r1', name: 'Eco Tote Bag', description: 'Sac réutilisable en coton bio certifié. Pratique pour vos courses et réduit les déchets plastiques.', pointsCost: 500, icon: 'bag-handle-outline' as const, color: '#2563EB', bgColor: '#EFF6FF', category: 'eco', stock: 25, totalStock: 50, isLimited: false, partnerName: 'EcoWear' },
@@ -26,6 +27,7 @@ const CATEGORY_META: Record<string, { label: string; icon: keyof typeof Ionicons
 
 export default function RewardDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { profile } = useUser();
   const reward = MOCK_REWARDS.find((r) => r.id === id);
 
   if (!reward) {
@@ -40,7 +42,7 @@ export default function RewardDetailScreen() {
 
   const cat = CATEGORY_META[reward.category];
   const stockPercent = reward.stock / reward.totalStock;
-  const userPoints = 2450;
+  const userPoints = profile?.totalPoints ?? 0;
   const canAfford = userPoints >= (reward.discountPrice ?? reward.pointsCost);
 
   const handleClaim = () => {

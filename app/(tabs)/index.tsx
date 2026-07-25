@@ -1,7 +1,15 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, type DimensionValue } from 'react-native';
+import { useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, type DimensionValue } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '../../src/core/contexts/UserContext';
+import { ProfileApiDatasource } from '../../src/data/datasources/ProfileApiDatasource';
+import { ProfileRepositoryImpl } from '../../src/data/repositories/ProfileRepositoryImpl';
+import { useHomeData } from '../../src/presentation/shared/hooks/useHomeData';
+import type { Signalement } from '../../src/data/datasources/SignalementApiDatasource';
+
+const datasource = new ProfileApiDatasource();
+const repository = new ProfileRepositoryImpl(datasource);
 
 const features = [
   {
@@ -38,44 +46,72 @@ const features = [
   },
 ];
 
-const recentReports = [
-  { id: 'r1', title: 'Plastic bottle near park', date: '2h ago', status: 'approved' as const },
-  { id: 'r2', title: 'Glass on Main Street', date: '5h ago', status: 'pending' as const },
-  { id: 'r3', title: 'Electronics downtown', date: '1d ago', status: 'collected' as const },
-  { id: 'r4', title: 'Organic waste behind mall', date: '2d ago', status: 'collected' as const },
-];
-function ReportEntry({ id, title, date, status }: { id: string; title: string; date: string; status: string }) {
+function ReportEntry({ id, category, status, date, location }: Signalement) {
+  const statusConfig = {
+    pending: { label: 'Pending', color: '#F59E0B', bg: '#FFFBEB' },
+    approved: { label: 'Approved', color: '#2563EB', bg: '#EFF6FF' },
+    collected: { label: 'Collected', color: '#059669', bg: '#ECFDF5' },
+    rejected: { label: 'Rejected', color: '#EF4444', bg: '#FEF2F2' },
+  } as const;
+  const c = statusConfig[status] ?? statusConfig.pending;
+
   return (
     <TouchableOpacity key={id} style={styles.reportRow} onPress={() => router.push(`/report/${id}`)}>
       <View style={styles.reportLeft}>
         <View style={styles.reportDot} />
         <View>
-          <Text style={styles.reportTitle}>{title}</Text>
+          <Text style={styles.reportTitle}>{category}</Text>
           <Text style={styles.reportDate}>{date}</Text>
         </View>
       </View>
-      <StatusBadge status={status} />
+      <View style={[styles.badgeSmall, { backgroundColor: c.bg }]}>
+        <Text style={[styles.badgeSmallText, { color: c.color }]}>{c.label}</Text>
+      </View>
     </TouchableOpacity>
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const config = {
-    pending: { label: 'Pending', color: '#F59E0B', bg: '#FFFBEB' },
-    approved: { label: 'Approved', color: '#2563EB', bg: '#EFF6FF' },
-    collected: { label: 'Collected', color: '#059669', bg: '#ECFDF5' },
-  } as const;
-  const c = config[status as keyof typeof config] ?? config.pending;
-  return (
-    <View style={[styles.badgeSmall, { backgroundColor: c.bg }]}>
-      <Text style={[styles.badgeSmallText, { color: c.color }]}>{c.label}</Text>
-    </View>
-  );
-}
-
 export default function Dashboard() {
-  const { avatarUri } = useUser();
-  const levelProgress = 0.65;
+  const { userId, avatarUri, profile: ctxProfile, setProfile: setCtxProfile, setUserName } = useUser();
+  const { profile, badges, recentReports, isLoading, error, refresh } = useHomeData(repository, userId);
+
+  useEffect(() => {
+    if (profile) {
+      setCtxProfile(profile);
+      setUserName(profile.name);
+    }
+  }, [profile]);
+
+  if (isLoading && !profile) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2E7D32" />
+      </View>
+    );
+  }
+
+  if (error && !profile) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Ionicons name="cloud-offline-outline" size={48} color="#D1D5DB" />
+        <Text style={{ fontSize: 16, color: '#6B7280', marginTop: 12 }}>{error}</Text>
+        <TouchableOpacity style={{ marginTop: 16, backgroundColor: '#2E7D32', paddingHorizontal: 24, paddingVertical: 10, borderRadius: 10 }} onPress={refresh}>
+          <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const p = profile ?? ctxProfile;
+  const userName = p?.name ?? 'User';
+  const points = p?.totalPoints ?? 0;
+  const reportsCount = p?.totalReports ?? 0;
+  const co2Saved = p?.impact?.co2Saved ?? 0;
+  const waterSaved = p?.impact?.waterSaved ?? 0;
+
+  const levelProgress = p ? Math.min((p.lifetimePoints % 750) / 750, 1) : 0;
+  const currentXp = p ? p.lifetimePoints % 750 : 0;
+  const xpToNext = 750 - currentXp;
 
   return (
     <View style={styles.container}>
@@ -91,7 +127,7 @@ export default function Dashboard() {
             </TouchableOpacity>
             <View>
               <Text style={styles.greeting}>Welcome back,</Text>
-              <Text style={styles.name}>Ariel 👋</Text>
+              <Text style={styles.name}>{userName} 👋</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.notifButton} onPress={() => router.push('/notifications')}>
@@ -102,17 +138,17 @@ export default function Dashboard() {
         <View style={styles.pointsRow}>
           <View style={styles.pointsCard}>
             <Ionicons name="star" size={16} color="#F59E0B" />
-            <Text style={styles.pointsValue}>240</Text>
+            <Text style={styles.pointsValue}>{points}</Text>
             <Text style={styles.pointsLabel}>pts</Text>
           </View>
           <View style={styles.pointsCard}>
             <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
-            <Text style={styles.pointsValue}>12</Text>
+            <Text style={styles.pointsValue}>{reportsCount}</Text>
             <Text style={styles.pointsLabel}>reports</Text>
           </View>
           <View style={styles.pointsCard}>
             <Ionicons name="cash-outline" size={16} color="#FFFFFF" />
-            <Text style={styles.pointsValue}>€8</Text>
+            <Text style={styles.pointsValue}>€{Math.floor(points / 300)}</Text>
             <Text style={styles.pointsLabel}>earned</Text>
           </View>
         </View>
@@ -123,30 +159,30 @@ export default function Dashboard() {
           <View style={styles.levelTop}>
             <View style={styles.levelBadge}>
               <Ionicons name="shield-checkmark" size={20} color="#2E7D32" />
-              <Text style={styles.levelBadgeText}>Eco Warrior</Text>
+              <Text style={styles.levelBadgeText}>{badges.find(b => b.unlocked)?.name ?? 'Newcomer'}</Text>
             </View>
-            <Text style={styles.levelXp}>480 / 750 XP</Text>
+            <Text style={styles.levelXp}>{currentXp} / 750 XP</Text>
           </View>
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: `${levelProgress * 100}%` as DimensionValue }]} />
           </View>
-          <Text style={styles.levelHint}>150 XP to next level</Text>
+          <Text style={styles.levelHint}>{xpToNext} XP to next level</Text>
         </View>
 
         <View style={styles.impactRow}>
           <View style={styles.impactCard}>
             <Ionicons name="leaf" size={22} color="#059669" />
-            <Text style={styles.impactValue}>24 kg</Text>
+            <Text style={styles.impactValue}>{co2Saved} kg</Text>
             <Text style={styles.impactLabel}>CO₂ saved</Text>
           </View>
           <View style={styles.impactCard}>
             <Ionicons name="water" size={22} color="#2563EB" />
-            <Text style={styles.impactValue}>340 L</Text>
+            <Text style={styles.impactValue}>{waterSaved} L</Text>
             <Text style={styles.impactLabel}>Water saved</Text>
           </View>
           <View style={styles.impactCard}>
             <Ionicons name="trending-up" size={22} color="#D97706" />
-            <Text style={styles.impactValue}>+15%</Text>
+            <Text style={styles.impactValue}>{reportsCount > 0 ? '+' + Math.floor((reportsCount / 10) * 100) : '0'}%</Text>
             <Text style={styles.impactLabel}>This month</Text>
           </View>
         </View>
@@ -173,11 +209,11 @@ export default function Dashboard() {
             <Ionicons name="calendar-outline" size={20} color="#2E7D32" />
             <Text style={styles.collectionTitle}>Next Collection</Text>
           </View>
-          <Text style={styles.collectionDate}>Wednesday, June 17</Text>
-          <Text style={styles.collectionTime}>08:00 - 12:00</Text>
+          <Text style={styles.collectionDate}>Prochain passage</Text>
+          <Text style={styles.collectionTime}>À confirmer</Text>
           <View style={styles.badge}>
             <Ionicons name="location" size={14} color="#2E7D32" />
-            <Text style={styles.badgeText}>Your street</Text>
+            <Text style={styles.badgeText}>Votre quartier</Text>
           </View>
         </View>
 
@@ -190,6 +226,12 @@ export default function Dashboard() {
         {recentReports.map((r) => (
           <ReportEntry key={r.id} {...r} />
         ))}
+        {recentReports.length === 0 && (
+          <View style={styles.emptyState}>
+            <Ionicons name="document-text-outline" size={32} color="#D1D5DB" />
+            <Text style={styles.emptyText}>No reports yet</Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -198,6 +240,12 @@ export default function Dashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#F9FAFB',
   },
   header: {
@@ -505,5 +553,14 @@ const styles = StyleSheet.create({
   badgeSmallText: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#9CA3AF',
   },
 });

@@ -14,9 +14,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { RewardMockDatasource } from '../../../../data/datasources/RewardMockDatasource';
+import { RewardApiDatasource } from '../../../../data/datasources/RewardApiDatasource';
 import { RewardRepositoryImpl } from '../../../../data/repositories/RewardRepositoryImpl';
 import { useRewards } from '../hooks/useRewards';
+import { useUser } from '../../../../core/contexts/UserContext';
 import type { Reward } from '../../../../domain/entities/Reward';
 import type { UserRewardData } from '../../../../domain/repositories/IRewardRepository';
 import type { SortOption } from '../hooks/useRewards';
@@ -122,10 +123,11 @@ const skeletonStyles = StyleSheet.create({
   },
 });
 
-const datasource = new RewardMockDatasource();
+const datasource = new RewardApiDatasource();
 const repository = new RewardRepositoryImpl(datasource);
 
 export function RewardsScreen() {
+  const { userId } = useUser();
   const {
     rewards,
     history,
@@ -147,7 +149,7 @@ export function RewardsScreen() {
     setCategory,
     setSearch,
     setSort,
-  } = useRewards(repository);
+  } = useRewards(repository, userId);
 
   const [showHistory, setShowHistory] = useState(false);
   const [rawSearch, setRawSearch] = useState(searchQuery);
